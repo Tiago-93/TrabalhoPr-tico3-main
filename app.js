@@ -1,385 +1,340 @@
 /* ============================================================
-   app.js — Lógica de Registo de Utilizador
-   User Story: Como utilizador, quero registar-me no sistema
-   para aceder às funcionalidades de gestão de eventos.
+   EventHub — Lógica Unificada (app.js)
+   SPA: Register, Login, Dashboard, Recovery
    ============================================================ */
 
 'use strict';
 
-// ── Chave de armazenamento no localStorage ──
-const USERS_KEY = 'eventhub_users';
+// ── CONFIG & STATE ──
+const USERS_KEY   = 'eventhub_users';
+const SESSION_KEY = 'eventhub_session';
 
-// ── Selecionar elementos DOM ──
-const form         = document.getElementById('registerForm');
-const submitBtn    = document.getElementById('submitBtn');
-const btnText      = submitBtn.querySelector('.btn-text');
-const btnSpinner   = submitBtn.querySelector('.btn-spinner');
-const formState    = document.getElementById('formState');
-const successState = document.getElementById('successState');
+// ── DOM ELEMENTS: VIEWS ──
+const views = {
+  register:  document.getElementById('view-register'),
+  login:     document.getElementById('view-login'),
+  dashboard: document.getElementById('view-dashboard')
+};
 
-const nomeInput    = document.getElementById('nome');
-const emailInput   = document.getElementById('email');
-const pwInput      = document.getElementById('password');
-const confirmInput = document.getElementById('confirm');
+// ── DOM ELEMENTS: REGISTO ──
+const regForm     = document.getElementById('registerForm');
+const regBtn      = document.getElementById('reg-btn');
+const regNome     = document.getElementById('reg-nome');
+const regEmail    = document.getElementById('reg-email');
+const regPw       = document.getElementById('reg-pw');
+const regCpw      = document.getElementById('reg-cpw');
+const regSF       = document.getElementById('reg-sf');
+const regSL       = document.getElementById('reg-sl');
 
-// Força da password
-const strengthFill  = document.getElementById('strengthFill');
-const strengthLabel = document.getElementById('strengthLabel');
+// ── DOM ELEMENTS: LOGIN ──
+const loginForm   = document.getElementById('loginForm');
+const loginBtn    = document.getElementById('login-btn');
+const loginEmail  = document.getElementById('login-email');
+const loginPw     = document.getElementById('login-pw');
+const rememberMe  = document.getElementById('rememberMe');
+const loginAlert  = document.getElementById('loginAlert');
+const loginAlertM = document.getElementById('loginAlertMsg');
 
-// Requisitos da password
-const reqLen    = document.getElementById('req-len');
-const reqLetter = document.getElementById('req-letter');
-const reqNumber = document.getElementById('req-number');
+// ── DOM ELEMENTS: DASHBOARD ──
+const dashName    = document.getElementById('dash-name');
+const sbName      = document.getElementById('sb-name');
+const sbEmail     = document.getElementById('sb-email');
+const sbAvatar    = document.getElementById('sb-avatar');
+const sessUser    = document.getElementById('sess-user');
+const sessEmail   = document.getElementById('sess-email');
+const sessAt      = document.getElementById('sess-at');
+const sessType    = document.getElementById('sess-type');
 
-// Toggle visibilidade passwords
-document.getElementById('togglePw').addEventListener('click', () => toggleVisibility(pwInput, 'togglePw'));
-document.getElementById('toggleConfirm').addEventListener('click', () => toggleVisibility(confirmInput, 'toggleConfirm'));
+// ── INITIALIZATION ──
+document.addEventListener('DOMContentLoaded', () => {
+  initRouting();
+  initValidation();
+  initToggles();
+  initModals();
+  checkSession();
+});
 
-// ── Utilitários ──
+// ── ROUTING ──
+function showView(viewId) {
+  Object.values(views).forEach(v => v.classList.add('hidden'));
+  views[viewId].classList.remove('hidden');
+  window.scrollTo(0,0);
+}
 
-/**
- * Devolve a lista de utilizadores registados no localStorage.
- * @returns {Array<{id, nome, email, passwordHash, createdAt, confirmed}>}
- */
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-  } catch {
-    return [];
+function initRouting() {
+  document.getElementById('goLogin').addEventListener('click', e => { e.preventDefault(); showView('login'); });
+  document.getElementById('goRegister').addEventListener('click', e => { e.preventDefault(); showView('register'); });
+  document.getElementById('reg-goLogin').addEventListener('click', () => showView('login'));
+}
+
+function checkSession() {
+  const session = getSession();
+  if (session) {
+    populateDashboard(session);
+    showView('dashboard');
+  } else {
+    showView('register'); // Default view
   }
 }
 
-/**
- * Guarda a lista de utilizadores no localStorage.
- * @param {Array} users
- */
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
+// ── UTILS ──
+const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
+const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY)) || JSON.parse(localStorage.getItem(SESSION_KEY));
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-/**
- * Gera um ID único simples (UUID v4 simplificado).
- * @returns {string}
- */
-function generateId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
-
-/**
- * Hash simples da password (simulação — em produção usar bcrypt).
- * @param {string} pw
- * @returns {string}
- */
 function hashPassword(pw) {
   let hash = 0;
-  for (let i = 0; i < pw.length; i++) {
-    hash = (Math.imul(31, hash) + pw.charCodeAt(i)) | 0;
-  }
-  return `hash_${hash.toString(36)}_${pw.length}`;
+  for (let i = 0; i < pw.length; i++) hash = (Math.imul(31, hash) + pw.charCodeAt(i)) | 0;
+  return `h_${hash.toString(36)}_${pw.length}`;
 }
 
-/**
- * Alterna a visibilidade do campo password.
- * @param {HTMLInputElement} input
- * @param {string} btnId
- */
-function toggleVisibility(input, btnId) {
-  const btn = document.getElementById(btnId);
-  const eyeOn  = btn.querySelector('.eye-on');
-  const eyeOff = btn.querySelector('.eye-off');
-  const isHidden = input.type === 'password';
-  input.type = isHidden ? 'text' : 'password';
-  btn.setAttribute('aria-label', isHidden ? 'Ocultar password' : 'Mostrar password');
-  eyeOn.classList.toggle('hidden', isHidden);
-  eyeOff.classList.toggle('hidden', !isHidden);
-}
-
-// ── Validações ──
-
-/**
- * Valida o nome completo.
- * Regras: não vazio, mínimo 2 palavras.
- */
-function validateNome() {
-  const val = nomeInput.value.trim();
-  const group = document.getElementById('group-nome');
-  const err   = document.getElementById('nome-error');
-
-  if (!val) {
-    return setFieldError(group, err, 'O nome completo é obrigatório.');
-  }
-  if (val.length < 3) {
-    return setFieldError(group, err, 'O nome deve ter pelo menos 3 caracteres.');
-  }
-  if (!/\s/.test(val)) {
-    return setFieldError(group, err, 'Introduza o seu nome completo (nome e apelido).');
-  }
-  return setFieldValid(group, err);
-}
-
-/**
- * Valida o formato do email e verifica se já está registado.
- */
-function validateEmail() {
-  const val = emailInput.value.trim();
-  const group = document.getElementById('group-email');
-  const err   = document.getElementById('email-error');
-
-  if (!val) {
-    return setFieldError(group, err, 'O email é obrigatório.');
-  }
-  // RFC-5322 simplificado
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  if (!emailRegex.test(val)) {
-    return setFieldError(group, err, 'Formato de email inválido. Ex: nome@dominio.com');
-  }
-
-  // Verificar se email já está registado
-  const users = getUsers();
-  const exists = users.some(u => u.email.toLowerCase() === val.toLowerCase());
-  if (exists) {
-    return setFieldError(group, err, 'Este email já se encontra registado no sistema.');
-  }
-
-  return setFieldValid(group, err);
-}
-
-/**
- * Valida a password:
- * – Mínimo 8 caracteres
- * – Pelo menos uma letra
- * – Pelo menos um número
- */
-function validatePassword() {
-  const val   = pwInput.value;
-  const group = document.getElementById('group-password');
-  const err   = document.getElementById('password-error');
-
-  if (!val) {
-    resetStrength();
-    return setFieldError(group, err, 'A password é obrigatória.');
-  }
-
-  const hasLen    = val.length >= 8;
-  const hasLetter = /[a-zA-ZÀ-ÿ]/.test(val);
-  const hasNumber = /\d/.test(val);
-
-  // Atualizar requisitos visuais
-  reqLen.classList.toggle('ok', hasLen);
-  reqLetter.classList.toggle('ok', hasLetter);
-  reqNumber.classList.toggle('ok', hasNumber);
-
-  // Calcular força
-  updateStrength(val, hasLen, hasLetter, hasNumber);
-
-  if (!hasLen) {
-    return setFieldError(group, err, 'A password deve ter pelo menos 8 caracteres.');
-  }
-  if (!hasLetter) {
-    return setFieldError(group, err, 'A password deve conter pelo menos uma letra.');
-  }
-  if (!hasNumber) {
-    return setFieldError(group, err, 'A password deve conter pelo menos um número.');
-  }
-
-  return setFieldValid(group, err);
-}
-
-/**
- * Valida a confirmação da password.
- */
-function validateConfirm() {
-  const val   = confirmInput.value;
-  const group = document.getElementById('group-confirm');
-  const err   = document.getElementById('confirm-error');
-
-  if (!val) {
-    return setFieldError(group, err, 'A confirmação de password é obrigatória.');
-  }
-  if (val !== pwInput.value) {
-    return setFieldError(group, err, 'As passwords não coincidem. Verifique e tente novamente.');
-  }
-  return setFieldValid(group, err);
-}
-
-// ── Força da Password ──
-
-/**
- * Calcula e exibe a força da password.
- */
-function updateStrength(pw, hasLen, hasLetter, hasNumber) {
-  let score = 0;
-  if (hasLen)    score++;
-  if (hasLetter) score++;
-  if (hasNumber) score++;
-  if (pw.length >= 12 && /[^a-zA-Z0-9]/.test(pw)) score++;
-
-  const levels = [
-    { cls: '', label: '' },
-    { cls: 's1', label: 'Fraca',  color: '#f43f5e' },
-    { cls: 's2', label: 'Média',  color: '#f59e0b' },
-    { cls: 's3', label: 'Boa',    color: '#84cc16' },
-    { cls: 's4', label: 'Forte',  color: '#22c55e' },
-  ];
-
-  const lvl = levels[Math.min(score, 4)];
-  strengthFill.className = `strength-fill ${lvl.cls}`;
-  strengthLabel.textContent = lvl.label;
-  if (lvl.color) strengthLabel.style.color = lvl.color;
-}
-
-function resetStrength() {
-  strengthFill.className = 'strength-fill';
-  strengthLabel.textContent = '';
-  [reqLen, reqLetter, reqNumber].forEach(r => r.classList.remove('ok'));
-}
-
-// ── Estado dos campos ──
-
-function setFieldError(group, errEl, message) {
-  group.classList.remove('is-valid');
-  group.classList.add('is-error');
-  errEl.textContent = message;
+// ── FIELD STATES ──
+function setFieldError(id, msg) {
+  const grp = document.getElementById(`grp-${id}`);
+  const err = document.getElementById(`err-${id}`);
+  grp.classList.remove('is-valid');
+  grp.classList.add('is-error');
+  if (err) err.textContent = msg;
   return false;
 }
 
-function setFieldValid(group, errEl) {
-  group.classList.remove('is-error');
-  group.classList.add('is-valid');
-  errEl.textContent = '';
+function setFieldValid(id) {
+  const grp = document.getElementById(`grp-${id}`);
+  const err = document.getElementById(`err-${id}`);
+  grp.classList.remove('is-error');
+  grp.classList.add('is-valid');
+  if (err) err.textContent = '';
   return true;
 }
 
-function clearField(group, errEl) {
-  group.classList.remove('is-valid', 'is-error');
-  errEl.textContent = '';
+function clearField(id) {
+  const grp = document.getElementById(`grp-${id}`);
+  const err = document.getElementById(`err-${id}`);
+  grp.classList.remove('is-error', 'is-valid');
+  if (err) err.textContent = '';
 }
 
-// ── Eventos de validação em tempo real ──
+// ── VALIDATION ──
+function initValidation() {
+  // Real-time Registo
+  regNome.addEventListener('blur', valRegNome);
+  regEmail.addEventListener('blur', valRegEmail);
+  regPw.addEventListener('input', valRegPw);
+  regCpw.addEventListener('input', valRegCpw);
 
-nomeInput.addEventListener('blur', validateNome);
-nomeInput.addEventListener('input', () => {
-  if (document.getElementById('group-nome').classList.contains('is-error')) validateNome();
-});
+  // Clear errors on input
+  [regNome, regEmail, loginEmail, loginPw].forEach(el => {
+    el.addEventListener('input', () => {
+      const id = el.id.replace('login-', 'login-').replace('reg-', 'reg-');
+      clearField(id);
+      if(id.startsWith('login')) loginAlert.classList.add('hidden');
+    });
+  });
+}
 
-emailInput.addEventListener('blur', validateEmail);
-emailInput.addEventListener('input', () => {
-  const group = document.getElementById('group-email');
-  clearField(group, document.getElementById('email-error'));
-});
+function valRegNome() {
+  const val = regNome.value.trim();
+  if (!val) return setFieldError('reg-nome', 'Nome obrigatório.');
+  if (val.length < 3 || !val.includes(' ')) return setFieldError('reg-nome', 'Introduza nome e apelido.');
+  return setFieldValid('reg-nome');
+}
 
-pwInput.addEventListener('input', () => {
-  validatePassword();
-  // Revalidar confirmação se já preenchida
-  if (confirmInput.value) validateConfirm();
-});
-pwInput.addEventListener('blur', validatePassword);
+function valRegEmail() {
+  const val = regEmail.value.trim().toLowerCase();
+  if (!val) return setFieldError('reg-email', 'Email obrigatório.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) return setFieldError('reg-email', 'Formato inválido.');
+  if (getUsers().some(u => u.email === val)) return setFieldError('reg-email', 'Email já registado.');
+  return setFieldValid('reg-email');
+}
 
-confirmInput.addEventListener('input', () => {
-  if (confirmInput.value) validateConfirm();
-});
-confirmInput.addEventListener('blur', validateConfirm);
+function valRegPw() {
+  const val = regPw.value;
+  const hasLen = val.length >= 8;
+  const hasLet = /[a-zA-Z]/.test(val);
+  const hasNum = /\d/.test(val);
 
-// ── Submissão do Formulário ──
+  document.getElementById('req-len').classList.toggle('ok', hasLen);
+  document.getElementById('req-letter').classList.toggle('ok', hasLet);
+  document.getElementById('req-number').classList.toggle('ok', hasNum);
 
-form.addEventListener('submit', async (e) => {
+  let score = 0;
+  if(hasLen) score++; if(hasLet) score++; if(hasNum) score++;
+  if(val.length >= 12 && /[^a-zA-Z0-9]/.test(val)) score++;
+
+  const levels = [
+    { cls: '', lbl: '' },
+    { cls: 's1', lbl: 'Fraca', col: '#f43f5e' },
+    { cls: 's2', lbl: 'Média', col: '#f59e0b' },
+    { cls: 's3', lbl: 'Boa', col: '#84cc16' },
+    { cls: 's4', lbl: 'Forte', col: '#22c55e' }
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  regSF.className = `strength-fill ${lvl.cls}`;
+  regSL.textContent = lvl.lbl;
+  regSL.style.color = lvl.col || '';
+
+  if (!hasLen || !hasLet || !hasNum) return setFieldError('reg-pw', '');
+  return setFieldValid('reg-pw');
+}
+
+function valRegCpw() {
+  if (!regCpw.value) return setFieldError('reg-cpw', 'Confirmação obrigatória.');
+  if (regCpw.value !== regPw.value) return setFieldError('reg-cpw', 'As passwords não coincidem.');
+  return setFieldValid('reg-cpw');
+}
+
+// ── REGISTO SUBMIT ──
+regForm.addEventListener('submit', async e => {
   e.preventDefault();
+  if (!valRegNome() || !valRegEmail() || !valRegPw() || !valRegCpw()) return;
 
-  // Validar todos os campos
-  const nomeOk    = validateNome();
-  const emailOk   = validateEmail();
-  const pwOk      = validatePassword();
-  const confirmOk = validateConfirm();
+  regBtn.disabled = true;
+  regBtn.querySelector('.btn-text').classList.add('hidden');
+  regBtn.querySelector('.btn-spinner').classList.remove('hidden');
 
-  if (!nomeOk || !emailOk || !pwOk || !confirmOk) {
-    // Focar no primeiro campo inválido
-    const firstError = form.querySelector('.is-error input');
-    if (firstError) firstError.focus();
-    return;
-  }
+  await delay(1000);
 
-  // Mostrar estado de carregamento
-  setLoading(true);
-
-  // Simular latência de rede (0.8s)
-  await delay(800);
-
-  // Criar utilizador
   const newUser = {
-    id:           generateId(),
-    nome:         nomeInput.value.trim(),
-    email:        emailInput.value.trim().toLowerCase(),
-    passwordHash: hashPassword(pwInput.value),
-    createdAt:    new Date().toISOString(),
-    confirmed:    false,
-    token:        generateId(),
+    id: Date.now().toString(36),
+    nome: regNome.value.trim(),
+    email: regEmail.value.trim().toLowerCase(),
+    pw: hashPassword(regPw.value),
+    created: new Date().toISOString()
   };
 
-  // Guardar no localStorage
   const users = getUsers();
   users.push(newUser);
   saveUsers(users);
 
-  // Simular envio de email de confirmação
-  simulateConfirmationEmail(newUser);
-
-  setLoading(false);
-  showSuccess(newUser);
+  document.getElementById('reg-confirmedEmail').textContent = newUser.email;
+  document.getElementById('reg-confirmedName').textContent = newUser.nome.split(' ')[0];
+  document.getElementById('reg-form').classList.add('hidden');
+  document.getElementById('reg-success').classList.remove('hidden');
 });
 
-// ── Helpers ──
+// ── LOGIN SUBMIT ──
+loginForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = loginEmail.value.trim().toLowerCase();
+  const pw = loginPw.value;
 
-function setLoading(isLoading) {
-  submitBtn.disabled = isLoading;
-  btnText.classList.toggle('hidden', isLoading);
-  btnSpinner.classList.toggle('hidden', !isLoading);
-}
+  if (!email) return setFieldError('login-email', 'Obrigatório.');
+  if (!pw) return setFieldError('login-pw', 'Obrigatório.');
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+  loginBtn.disabled = true;
+  loginBtn.querySelector('.btn-text').classList.add('hidden');
+  loginBtn.querySelector('.btn-spinner').classList.remove('hidden');
 
-/**
- * Simula o envio de email de confirmação.
- * Em produção, esta chamada seria feita ao servidor.
- */
-function simulateConfirmationEmail(user) {
-  const emailData = {
-    to:        user.email,
-    subject:   'Confirme a sua conta — EventHub',
-    body:      `Olá ${user.nome}, obrigado por se registar! Token: ${user.token}`,
-    sentAt:    new Date().toISOString(),
-    delivered: true,
+  await delay(1000);
+
+  const user = getUsers().find(u => u.email === email && u.pw === hashPassword(pw));
+
+  if (!user) {
+    loginBtn.disabled = false;
+    loginBtn.querySelector('.btn-text').classList.remove('hidden');
+    loginBtn.querySelector('.btn-spinner').classList.add('hidden');
+    loginAlert.classList.remove('hidden');
+    loginAlertM.textContent = 'Credenciais inválidas. Tente novamente.';
+    return;
+  }
+
+  const session = {
+    userId: user.id,
+    nome: user.nome,
+    email: user.email,
+    loginAt: new Date().toISOString(),
+    persistent: rememberMe.checked
   };
-  // Guardar registo do email simulado
-  const emailLog = JSON.parse(localStorage.getItem('eventhub_emails') || '[]');
-  emailLog.push(emailData);
-  localStorage.setItem('eventhub_emails', JSON.stringify(emailLog));
-  console.info('📧 Email de confirmação simulado:', emailData);
-}
 
-/**
- * Exibe o estado de sucesso após registo.
- */
-function showSuccess(user) {
-  formState.classList.add('hidden');
-  successState.classList.remove('hidden');
-  document.getElementById('confirmedEmail').textContent = user.email;
-  document.getElementById('confirmedName').textContent  = user.nome.split(' ')[0];
-}
+  if (rememberMe.checked) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  else sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
-// ── Link "Ir para Login" ──
-document.getElementById('goLoginBtn').addEventListener('click', (e) => {
-  e.preventDefault();
-  // Em modo single-file: mostrar alerta informativo
-  alert('Funcionalidade de login em desenvolvimento.\nO seu registo foi guardado com sucesso!');
+  populateDashboard(session);
+  showView('dashboard');
+
+  // Reset form
+  loginBtn.disabled = false;
+  loginBtn.querySelector('.btn-text').classList.remove('hidden');
+  loginBtn.querySelector('.btn-spinner').classList.add('hidden');
+  loginForm.reset();
 });
 
-// ── Link "Já tem conta?" ──
-document.getElementById('switchToLogin').addEventListener('click', (e) => {
-  e.preventDefault();
-  alert('Funcionalidade de login em desenvolvimento.\nRegistos guardados: ' + getUsers().length);
-});
+// ── DASHBOARD LOGIC ──
+function populateDashboard(s) {
+  const firstName = s.nome.split(' ')[0];
+  const initials = s.nome.split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
+
+  dashName.textContent = firstName;
+  sbName.textContent = s.nome;
+  sbEmail.textContent = s.email;
+  sbAvatar.textContent = initials;
+  sessUser.textContent = s.nome;
+  sessEmail.textContent = s.email;
+  sessAt.textContent = new Date(s.loginAt).toLocaleString('pt-PT');
+  sessType.textContent = s.persistent ? 'Persistente (Lembrar-me)' : 'Temporária (Tab)';
+
+  const hour = new Date().getHours();
+  let greet = 'Bom dia';
+  if(hour >= 12) greet = 'Boa tarde';
+  if(hour >= 19) greet = 'Boa noite';
+  document.querySelector('.dash-title').innerHTML = `${greet}, <span id="dash-name">${firstName}</span>! 👋`;
+}
+
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+  showView('login');
+}
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('logoutBtnTop').addEventListener('click', logout);
+document.getElementById('logoutBtnCard').addEventListener('click', logout);
+
+// ── UI TOGGLES ──
+function initToggles() {
+  document.querySelectorAll('.toggle-pw').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      btn.textContent = isPw ? '🔒' : '👁';
+    });
+  });
+}
+
+// ── MODALS ──
+function initModals() {
+  const modal = document.getElementById('recoverModal');
+  const recoverForm = document.getElementById('recover-form-div');
+  const recoverSucc = document.getElementById('recover-success-div');
+
+  document.getElementById('forgotPwLink').addEventListener('click', e => {
+    e.preventDefault();
+    modal.classList.remove('hidden');
+    recoverForm.classList.remove('hidden');
+    recoverSucc.classList.add('hidden');
+  });
+
+  const close = () => modal.classList.add('hidden');
+  document.getElementById('closeModal').addEventListener('click', close);
+  document.getElementById('closeRecoverSuccess').addEventListener('click', close);
+  modal.addEventListener('click', e => { if(e.target === modal) close(); });
+
+  document.getElementById('sendRecoverBtn').addEventListener('click', async () => {
+    const email = document.getElementById('recoverEmail').value.trim();
+    if(!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email válido.');
+
+    const btn = document.getElementById('sendRecoverBtn');
+    btn.disabled = true;
+    btn.querySelector('.btn-spinner').classList.remove('hidden');
+
+    await delay(1200);
+
+    document.getElementById('recoverSentTo').textContent = email;
+    recoverForm.classList.add('hidden');
+    recoverSucc.classList.remove('hidden');
+    btn.disabled = false;
+    btn.querySelector('.btn-spinner').classList.add('hidden');
+  });
+}
