@@ -1,60 +1,61 @@
 /* ============================================================
    EventHub — Lógica Unificada (app.js)
-   SPA: Register, Login, Dashboard, Recovery, Create Event, List
+   SPA: Register, Login, Dashboard, Recovery, Create Event, List, Details
    ============================================================ */
 
 'use strict';
 
 // ── CONFIG & STATE ──
-const USERS_KEY   = 'eventhub_users';
+const USERS_KEY = 'eventhub_users';
 const SESSION_KEY = 'eventhub_session';
-const EVENTS_KEY  = 'eventhub_events';
+const EVENTS_KEY = 'eventhub_events';
 
 // ── DOM ELEMENTS: VIEWS ──
 const views = {
-  register:    document.getElementById('view-register'),
-  login:       document.getElementById('view-login'),
-  dashboard:   document.getElementById('view-dashboard'),
+  register: document.getElementById('view-register'),
+  login: document.getElementById('view-login'),
+  dashboard: document.getElementById('view-dashboard'),
   createEvent: document.getElementById('view-create-event'),
-  listEvents:  document.getElementById('view-list-events')
+  listEvents: document.getElementById('view-list-events'),
+  details: document.getElementById('view-event-details')
 };
 
 // ── DOM ELEMENTS: REGISTO ──
-const regForm     = document.getElementById('registerForm');
-const regBtn      = document.getElementById('reg-btn');
-const regNome     = document.getElementById('reg-nome');
-const regEmail    = document.getElementById('reg-email');
-const regPw       = document.getElementById('reg-pw');
-const regCpw      = document.getElementById('reg-cpw');
-const regSF       = document.getElementById('reg-sf');
-const regSL       = document.getElementById('reg-sl');
+const regForm = document.getElementById('registerForm');
+const regBtn = document.getElementById('reg-btn');
+const regNome = document.getElementById('reg-nome');
+const regEmail = document.getElementById('reg-email');
+const regPw = document.getElementById('reg-pw');
+const regCpw = document.getElementById('reg-cpw');
+const regSF = document.getElementById('reg-sf');
+const regSL = document.getElementById('reg-sl');
 
 // ── DOM ELEMENTS: LOGIN ──
-const loginForm   = document.getElementById('loginForm');
-const loginBtn    = document.getElementById('login-btn');
-const loginEmail  = document.getElementById('login-email');
-const loginPw     = document.getElementById('login-pw');
-const rememberMe  = document.getElementById('rememberMe');
-const loginAlert  = document.getElementById('loginAlert');
+const loginForm = document.getElementById('loginForm');
+const loginBtn = document.getElementById('login-btn');
+const loginEmail = document.getElementById('login-email');
+const loginPw = document.getElementById('login-pw');
+const rememberMe = document.getElementById('rememberMe');
+const loginAlert = document.getElementById('loginAlert');
 const loginAlertM = document.getElementById('loginAlertMsg');
 
 // ── DOM ELEMENTS: DASHBOARD ──
-const dashName    = document.getElementById('dash-name');
-const sbName      = document.getElementById('sb-name');
-const sbEmail     = document.getElementById('sb-email');
-const sbAvatar    = document.getElementById('sb-avatar');
-const sessUser    = document.getElementById('sess-user');
-const sessEmail   = document.getElementById('sess-email');
-const sessAt      = document.getElementById('sess-at');
-const sessType    = document.getElementById('sess-type');
+const dashName = document.getElementById('dash-name');
+const sbName = document.getElementById('sb-name');
+const sbEmail = document.getElementById('sb-email');
+const sbAvatar = document.getElementById('sb-avatar');
+const sessUser = document.getElementById('sess-user');
+const sessEmail = document.getElementById('sess-email');
+const sessAt = document.getElementById('sess-at');
+const sessType = document.getElementById('sess-type');
 
 // ── DOM ELEMENTS: CRIAR EVENTO ──
-const ceForm       = document.getElementById('createEventForm');
-const ceBtn        = document.getElementById('ce-submit-btn');
-const ceImgInput   = document.getElementById('ce-imagem');
+const ceForm = document.getElementById('createEventForm');
+const ceBtn = document.getElementById('ce-submit-btn');
+const ceImgInput = document.getElementById('ce-imagem');
 const ceImgPreview = document.getElementById('ce-img-preview');
-const ceUploadUI   = document.getElementById('ce-upload-ui');
-const ceDropzone   = document.getElementById('ce-img-dropzone');
+const ceUploadUI = document.getElementById('ce-upload-ui');
+const ceDropzone = document.getElementById('ce-img-dropzone');
 
 // ── INITIALIZATION ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -67,39 +68,41 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── ROUTING ──
-function showView(viewId) {
+function showView(viewId, params = {}) {
   Object.values(views).forEach(v => v.classList.add('hidden'));
   views[viewId].classList.remove('hidden');
-  
+
   // Update sidebar active state
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.dataset.target === viewId);
   });
 
-  window.scrollTo(0,0);
-  if(viewId === 'dashboard') populateEventsTable();
-  if(viewId === 'listEvents') populateEventsGrid();
+  window.scrollTo(0, 0);
+  if (viewId === 'dashboard') populateDashboard(getSession());
+  if (viewId === 'listEvents') populateEventsGrid();
+  if (viewId === 'details') renderEventDetails(params.id);
 }
 
 function initRouting() {
-  // Auth links
   document.getElementById('goLogin').addEventListener('click', e => { e.preventDefault(); showView('login'); });
   document.getElementById('goRegister').addEventListener('click', e => { e.preventDefault(); showView('register'); });
   document.getElementById('reg-goLogin').addEventListener('click', () => showView('login'));
 
-  // Global Sidebar Nav
-  document.querySelectorAll('.nav-item[data-target]').forEach(item => {
-    item.addEventListener('click', e => {
+  // Handle ALL sidebar and navigation links with data-target
+  document.addEventListener('click', e => {
+    const target = e.target.closest('[data-target]');
+    if (target) {
       e.preventDefault();
-      showView(item.dataset.target);
-    });
+      showView(target.dataset.target);
+    }
   });
 
-  // Action Buttons
   document.getElementById('btn-nav-create').addEventListener('click', () => showView('createEvent'));
   document.getElementById('btn-nav-create-le').addEventListener('click', () => showView('createEvent'));
-  document.getElementById('nav-back-dash').addEventListener('click', e => { e.preventDefault(); showView('dashboard'); });
+  document.getElementById('nav-back-dash')?.addEventListener('click', e => { e.preventDefault(); showView('dashboard'); });
   document.getElementById('btn-cancel-create').addEventListener('click', () => showView('dashboard'));
+  document.getElementById('btn-back-from-details').addEventListener('click', () => showView('listEvents'));
+
   document.getElementById('ce-go-dash').addEventListener('click', () => {
     ceForm.classList.remove('hidden');
     document.getElementById('ce-success').classList.add('hidden');
@@ -113,17 +116,17 @@ function checkSession() {
     populateDashboard(session);
     showView('dashboard');
   } else {
-    showView('register'); // Default view
+    showView('register');
   }
 }
 
 // ── UTILS ──
-const getUsers  = () => JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY)) || [];
 const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 const getEvents = () => JSON.parse(localStorage.getItem(EVENTS_KEY)) || [];
-const saveEvents= (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-const getSession= () => JSON.parse(sessionStorage.getItem(SESSION_KEY)) || JSON.parse(localStorage.getItem(SESSION_KEY));
-const delay     = (ms) => new Promise(res => setTimeout(res, ms));
+const saveEvents = (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY)) || JSON.parse(localStorage.getItem(SESSION_KEY));
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 function hashPassword(pw) {
   let hash = 0;
@@ -166,7 +169,7 @@ function initValidation() {
     el.addEventListener('input', () => {
       const id = el.id.replace('login-', 'login-').replace('reg-', 'reg-');
       clearField(id);
-      if(id.startsWith('login')) loginAlert.classList.add('hidden');
+      if (id.startsWith('login')) loginAlert.classList.add('hidden');
     });
   });
 
@@ -201,8 +204,8 @@ function valRegPw() {
   document.getElementById('req-number').classList.toggle('ok', hasNum);
 
   let score = 0;
-  if(hasLen) score++; if(hasLet) score++; if(hasNum) score++;
-  if(val.length >= 12 && /[^a-zA-Z0-9]/.test(val)) score++;
+  if (hasLen) score++; if (hasLet) score++; if (hasNum) score++;
+  if (val.length >= 12 && /[^a-zA-Z0-9]/.test(val)) score++;
 
   const levels = [
     { cls: '', lbl: '' }, { cls: 's1', lbl: 'Fraca', col: '#f43f5e' },
@@ -301,16 +304,17 @@ loginForm.addEventListener('submit', async e => {
 
 // ── DASHBOARD & POPULATION ──
 function populateDashboard(s) {
+  if (!s) return;
   const firstName = s.nome.split(' ')[0];
-  const initials = s.nome.split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
+  const initials = s.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
   const syncSB = (idPrefix) => {
     const n = document.getElementById(`sb-name-${idPrefix}`);
     const e = document.getElementById(`sb-email-${idPrefix}`);
     const a = document.getElementById(`sb-avatar-${idPrefix}`);
-    if(n) n.textContent = s.nome;
-    if(e) e.textContent = s.email;
-    if(a) a.textContent = initials;
+    if (n) n.textContent = s.nome;
+    if (e) e.textContent = s.email;
+    if (a) a.textContent = initials;
   };
 
   dashName.textContent = firstName;
@@ -324,13 +328,26 @@ function populateDashboard(s) {
 
   syncSB('ce'); syncSB('le');
 
+  updateStats();
   populateEventsTable();
 
   const hour = new Date().getHours();
   let greet = 'Bom dia';
-  if(hour >= 12) greet = 'Boa tarde';
-  if(hour >= 19) greet = 'Boa noite';
+  if (hour >= 12) greet = 'Boa tarde';
+  if (hour >= 19) greet = 'Boa noite';
   document.querySelector('.dash-title').innerHTML = `${greet}, <span id="dash-name">${firstName}</span>! 👋`;
+}
+
+function updateStats() {
+  const events = getEvents();
+  const dummy = [{}, {}]; // Simulate 2 dummy events
+  const total = events.length + dummy.length;
+  const upcoming = events.filter(e => new Date(e.data) > new Date()).length + dummy.length;
+
+  document.getElementById('stat-events-count').textContent = total;
+  document.getElementById('stat-events-badge').textContent = `+${events.length} este mês`;
+  document.getElementById('stat-upcoming-count').textContent = upcoming;
+  document.getElementById('stat-part-count').textContent = (total * 25) + 12; // Just for visuals
 }
 
 function populateEventsTable() {
@@ -341,14 +358,14 @@ function populateEventsTable() {
     { titulo: 'Workshop React', data: '2026-05-15T10:00', capac: 42, estado: 'publicado' },
     { titulo: 'Conferência UX', data: '2026-05-22T09:30', capac: 130, estado: 'publicado' }
   ];
-  const all = [...dummy, ...events].slice(-6);
+  const all = [...dummy, ...events].slice(-6).reverse();
   tbody.innerHTML = all.map(ev => {
     const d = new Date(ev.data);
     const dateStr = d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
     const isPast = d < new Date();
     const statusCls = ev.estado === 'rascunho' ? 'pending' : (isPast ? 'done' : 'active');
     const statusLbl = ev.estado === 'rascunho' ? 'Rascunho' : (isPast ? 'Concluído' : 'Ativo');
-    return `<tr><td><strong>${ev.titulo}</strong></td><td>${dateStr}</td><td>${ev.capac}</td><td><span class="badge badge--${statusCls}">${statusLbl}</span></td></tr>`;
+    return `<tr><td><strong>${ev.titulo}</strong></td><td>${dateStr}</td><td>${ev.capac || 0}</td><td><span class="badge badge--${statusCls}">${statusLbl}</span></td></tr>`;
   }).join('');
 }
 
@@ -370,7 +387,7 @@ function populateEventsGrid() {
     const imgUrl = ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500&q=80';
 
     return `
-      <article class="event-card fade-up">
+      <article class="event-card fade-up" onclick="app.visitEvent('${ev.id}')">
         <div class="card-img">
           <img src="${imgUrl}" alt="${ev.titulo}">
           <div class="card-status"><span class="badge badge--${statusCls}">${statusLbl}</span></div>
@@ -380,14 +397,51 @@ function populateEventsGrid() {
           <p>${ev.desc}</p>
           <div class="card-meta">
             <div class="meta-item">📅 ${dateStr}</div>
-            <div class="meta-item">📍 ${ev.local} (${ev.formato})</div>
-            <div class="meta-item">👥 Max: ${ev.capac}</div>
+            <div class="meta-item">📍 ${ev.local}</div>
           </div>
         </div>
       </article>
     `;
   }).join('');
 }
+
+function renderEventDetails(id) {
+  const events = getEvents();
+  const dummy = [
+    { id: 'd1', titulo: 'Workshop React', desc: 'Aprenda as bases do React e Hooks modernos. Neste workshop prático, vamos construir uma aplicação do zero usando as melhores práticas da indústria.', data: '2026-05-15T10:00', local: 'Online', formato: 'online', capac: 50, estado: 'publicado', orgName: 'Admin EventHub' },
+    { id: 'd2', titulo: 'Conferência UX 2026', desc: 'As tendências de design para o próximo ano. Palestras com designers seniores de empresas como Google, Meta e Spotify.', data: '2026-05-22T09:30', local: 'Auditório Lisboa', formato: 'presencial', capac: 200, estado: 'publicado', orgName: 'Admin EventHub' }
+  ];
+
+  let ev = [...dummy, ...events].find(e => e.id === id);
+  if (!ev) { showView('listEvents'); return; }
+
+  // Populate UI
+  document.getElementById('ed-titulo').textContent = ev.titulo;
+  document.getElementById('ed-desc').textContent = ev.desc;
+  document.getElementById('ed-data').textContent = new Date(ev.data).toLocaleString('pt-PT');
+  document.getElementById('ed-local').textContent = ev.local;
+  document.getElementById('ed-local-full').textContent = ev.local;
+  document.getElementById('ed-capac').textContent = ev.capac;
+
+  const status = document.getElementById('ed-status');
+  const isPast = new Date(ev.data) < new Date();
+  status.className = `badge badge--${isPast ? 'done' : 'active'}`;
+  status.textContent = isPast ? 'Concluído' : 'Publicado';
+
+  const hero = document.getElementById('ed-hero');
+  const img = ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&q=80';
+  hero.style.backgroundImage = `url("${img}")`;
+
+  // Organizer info
+  const orgName = ev.orgName || (getSession().nome);
+  document.getElementById('ed-org-name').textContent = orgName;
+  document.getElementById('ed-org-avatar').textContent = orgName.split(' ').map(n => n[0]).join('');
+}
+
+// Global helper for onclick
+window.app = {
+  visitEvent: (id) => showView('details', { id })
+};
 
 function logout() {
   localStorage.removeItem(SESSION_KEY);
@@ -410,7 +464,7 @@ function initEventLogic() {
         ceImgPreview.src = e.target.result;
         ceImgPreview.classList.remove('hidden');
         ceUploadUI.classList.add('hidden');
-        ceForm.dataset.img = e.target.result; // Temporarily store preview
+        ceForm.dataset.img = e.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -457,6 +511,10 @@ function initEventLogic() {
     saveEvents(events);
 
     document.getElementById('ce-event-url').textContent = newEvent.url;
+    // Add click to visit event directly from success
+    document.getElementById('ce-event-url').style.cursor = 'pointer';
+    document.getElementById('ce-event-url').onclick = () => window.app.visitEvent(eventId);
+
     ceForm.classList.add('hidden');
     document.getElementById('ce-success').classList.remove('hidden');
 
@@ -493,10 +551,10 @@ function initModals() {
   const close = () => modal.classList.add('hidden');
   document.getElementById('closeModal').addEventListener('click', close);
   document.getElementById('closeRecoverSuccess').addEventListener('click', close);
-  modal.addEventListener('click', e => { if(e.target === modal) close(); });
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
   document.getElementById('sendRecoverBtn').addEventListener('click', async () => {
     const email = document.getElementById('recoverEmail').value.trim();
-    if(!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email válido.');
+    if (!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email válido.');
     const btn = document.getElementById('sendRecoverBtn');
     btn.disabled = true; btn.querySelector('.btn-spinner').classList.remove('hidden');
     await delay(1200);

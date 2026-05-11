@@ -226,10 +226,38 @@
     </header>
 
     <section class="stats-grid">
-      <div class="stat-card"><div class="stat-icon stat-icon--purple">📅</div><div class="stat-info"><span class="stat-value">12</span><span class="stat-label">Eventos Ativos</span></div><div class="stat-badge stat-badge--up">+3 este mês</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--blue">👥</div><div class="stat-info"><span class="stat-value">248</span><span class="stat-label">Participantes</span></div><div class="stat-badge stat-badge--up">+18 esta semana</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--green">📈</div><div class="stat-info"><span class="stat-value">94%</span><span class="stat-label">Taxa de Presença</span></div><div class="stat-badge stat-badge--up">+2% vs. anterior</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--amber">⏰</div><div class="stat-info"><span class="stat-value">3</span><span class="stat-label">Próximos Eventos</span></div><div class="stat-badge stat-badge--neutral">esta semana</div></div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--purple">📅</div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-events-count">0</span>
+          <span class="stat-label">Eventos Ativos</span>
+        </div>
+        <div class="stat-badge stat-badge--up" id="stat-events-badge">+0 este mês</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--blue">👥</div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-part-count">0</span>
+          <span class="stat-label">Participantes</span>
+        </div>
+        <div class="stat-badge stat-badge--up">+0 esta semana</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--green">📈</div>
+        <div class="stat-info">
+          <span class="stat-value">94%</span>
+          <span class="stat-label">Taxa de Presença</span>
+        </div>
+        <div class="stat-badge stat-badge--up">+2% vs. anterior</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--amber">⏰</div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-upcoming-count">0</span>
+          <span class="stat-label">Próximos Eventos</span>
+        </div>
+        <div class="stat-badge stat-badge--neutral">esta semana</div>
+      </div>
     </section>
 
     <div class="dash-grid-2">
@@ -270,9 +298,9 @@
       <span class="brand-name">EventHub</span>
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="nav-item" id="nav-back-dash">📋 Dashboard</a>
-      <a href="#" class="nav-item active">➕ Novo Evento</a>
-      <a href="#" class="nav-item">📅 Eventos</a>
+      <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
+      <a href="#" class="nav-item active" data-target="createEvent">➕ Novo Evento</a>
+      <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
       <a href="#" class="nav-item">📊 Estatísticas</a>
     </nav>
     <div class="sidebar-footer">
@@ -394,6 +422,8 @@
         </div>
       </form>
     </div>
+  </div>
+</div>
 
 <!-- ═══════════ VIEW: LISTA DE EVENTOS ═══════════ -->
 <div id="view-list-events" class="view view-dash hidden">
@@ -405,8 +435,8 @@
     <nav class="sidebar-nav">
       <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
       <a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a>
-      <a href="#" class="nav-item">👥 Participantes</a>
-      <a href="#" class="nav-item">📊 Estatísticas</a>
+      <a href="#" class="nav-item" data-target="participantes">👥 Participantes</a>
+      <a href="#" class="nav-item" data-target="estatisticas">📊 Estatísticas</a>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -433,8 +463,72 @@
     </div>
   </div>
 </div>
+
+<!-- ═══════════ VIEW: DETALHES DO EVENTO ═══════════ -->
+<div id="view-event-details" class="view hidden">
+  <div class="event-details-container">
+    <nav class="event-details-nav">
+      <button class="btn-back" id="btn-back-from-details">← Voltar</button>
+      <div class="brand">
+        <div class="brand-icon">&#128197;</div>
+        <span class="brand-name">EventHub</span>
+      </div>
+    </nav>
+    
+    <div class="event-hero" id="ed-hero">
+      <div class="event-hero-overlay">
+        <div class="event-hero-content">
+          <span class="badge badge--active" id="ed-status">Publicado</span>
+          <h1 id="ed-titulo">Título do Evento</h1>
+          <div class="event-quick-info">
+            <span>📅 <span id="ed-data">--</span></span>
+            <span>📍 <span id="ed-local">--</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="event-content-grid">
+      <div class="event-main-info">
+        <section class="ed-card">
+          <h3>Sobre o Evento</h3>
+          <p id="ed-desc">Descrição do evento...</p>
+        </section>
+        
+        <section class="ed-card">
+          <h3>Localização</h3>
+          <div class="map-placeholder">
+            <span class="input-icon">📍</span>
+            <span id="ed-local-full">--</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="event-side-info">
+        <div class="ed-registration-card">
+          <div class="ed-reg-header">
+            <span class="ed-price">Gratuito</span>
+            <span class="ed-capacity">Capacidade: <strong id="ed-capac">--</strong></span>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-register-event">Inscrever-me Agora</button>
+          <p class="ed-disclaimer">Ao inscrever-se, concorda com os termos do evento.</p>
+        </div>
+
+        <div class="ed-organizer-card">
+          <h4>Organizador</h4>
+          <div class="ed-org-info">
+            <div class="avatar" id="ed-org-avatar">??</div>
+            <div>
+              <strong id="ed-org-name">--</strong>
+              <span id="ed-org-role">Organizador Verificado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
 
 <!-- ═══════════ MODAL: RECUPERAÇÃO ═══════════ -->
 <div id="recoverModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
