@@ -77,7 +77,7 @@
                         </div>
                         <form id="registerForm" novalidate>
                             <div class="field-group" id="grp-reg-nome">
-                                <label for="reg-nome">Nome Completo</label>
+                                <label for="reg-nome">Nome Completo <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <span class="input-icon">👤</span>
                                     <input type="text" id="reg-nome" placeholder="Ex: João Silva" autocomplete="name"
@@ -87,7 +87,7 @@
                                 <span class="error-msg" id="err-reg-nome" role="alert"></span>
                             </div>
                             <div class="field-group" id="grp-reg-email">
-                                <label for="reg-email">Email</label>
+                                <label for="reg-email">Email <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <span class="input-icon">✉</span>
                                     <input type="email" id="reg-email" placeholder="exemplo@email.com"
@@ -97,7 +97,7 @@
                                 <span class="error-msg" id="err-reg-email" role="alert"></span>
                             </div>
                             <div class="field-group" id="grp-reg-pw">
-                                <label for="reg-pw">Password</label>
+                                <label for="reg-pw">Password <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <span class="input-icon">🔒</span>
                                     <input type="password" id="reg-pw" placeholder="Mínimo 8 caracteres"
@@ -121,7 +121,7 @@
                                 <span class="error-msg" id="err-reg-pw" role="alert"></span>
                             </div>
                             <div class="field-group" id="grp-reg-cpw">
-                                <label for="reg-cpw">Confirmar Password</label>
+                                <label for="reg-cpw">Confirmar Password <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <span class="input-icon">🛡</span>
                                     <input type="password" id="reg-cpw" placeholder="Repita a password"
@@ -190,7 +190,7 @@
                     </div>
                     <form id="loginForm" novalidate>
                         <div class="field-group" id="grp-login-email">
-                            <label for="login-email">Email</label>
+                            <label for="login-email">Email <span class="required">*</span></label>
                             <div class="input-wrapper">
                                 <span class="input-icon">✉</span>
                                 <input type="email" id="login-email" placeholder="exemplo@email.com"
@@ -200,7 +200,7 @@
                             <span class="error-msg" id="err-login-email" role="alert"></span>
                         </div>
                         <div class="field-group" id="grp-login-pw">
-                            <label for="login-pw">Password</label>
+                            <label for="login-pw">Password <span class="required">*</span></label>
                             <div class="input-wrapper">
                                 <span class="input-icon">🔒</span>
                                 <input type="password" id="login-pw" placeholder="A sua password"
@@ -428,14 +428,14 @@
                     <div class="form-grid">
                         <div class="form-column">
                             <div class="field-group" id="grp-ce-titulo">
-                                <label for="ce-titulo">Título do Evento</label>
+                                <label for="ce-titulo">Título do Evento <span class="required">*</span></label>
                                 <input type="text" id="ce-titulo" placeholder="Ex: Workshop de JavaScript Avançado"
                                     required />
                                 <span class="error-msg" id="err-ce-titulo"></span>
                             </div>
 
                             <div class="field-group" id="grp-ce-desc">
-                                <label for="ce-desc">Descrição</label>
+                                <label for="ce-desc">Descrição <span class="required">*</span></label>
                                 <textarea id="ce-desc" rows="4"
                                     placeholder="Descreva o que os participantes podem esperar..." required></textarea>
                                 <span class="error-msg" id="err-ce-desc"></span>
@@ -443,12 +443,12 @@
 
                             <div class="form-row">
                                 <div class="field-group" id="grp-ce-data">
-                                    <label for="ce-data">Data e Hora</label>
+                                    <label for="ce-data">Data e Hora <span class="required">*</span></label>
                                     <input type="datetime-local" id="ce-data" required />
                                     <span class="error-msg" id="err-ce-data"></span>
                                 </div>
                                 <div class="field-group" id="grp-ce-capacidade">
-                                    <label for="ce-capacidade">Capacidade Máxima</label>
+                                    <label for="ce-capacidade">Capacidade Máxima <span class="required">*</span></label>
                                     <input type="number" id="ce-capacidade" min="1" placeholder="Ex: 50" required />
                                     <span class="error-msg" id="err-ce-capacidade"></span>
                                 </div>
@@ -457,13 +457,26 @@
 
                         <div class="form-column">
                             <div class="field-group" id="grp-ce-local">
-                                <label for="ce-local">Local / Link</label>
-                                <input type="text" id="ce-local" placeholder="Morada ou link da reunião" required />
+                                <label for="ce-local">Localização (Morada) <span class="required">*</span></label>
+                                <input type="text" id="ce-local" placeholder="Ex: Rua da Liberdade, 123" required />
                                 <span class="error-msg" id="err-ce-local"></span>
                             </div>
 
+                            <div class="field-group" id="grp-ce-link">
+                                <label for="ce-link">Link do Evento (URL)</label>
+                                <input type="url" id="ce-link" placeholder="Ex: https://zoom.us/j/..." />
+                                <span class="error-msg" id="err-ce-link"></span>
+                            </div>
+
+                            <div class="field-group">
+                                <label>Pré-visualização do Mapa</label>
+                                <div class="map-container" style="height: 150px;">
+                                    <iframe id="ce-map-preview" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" src="about:blank"></iframe>
+                                </div>
+                            </div>
+
                             <div class="field-group" id="grp-ce-formato">
-                                <label for="ce-formato">Formato</label>
+                                <label for="ce-formato">Formato <span class="required">*</span></label>
                                 <select id="ce-formato" required>
                                     <option value="" disabled selected>Selecionar formato</option>
                                     <option value="presencial">Presencial</option>
@@ -571,7 +584,8 @@
                         <h1 id="ed-titulo">Título do Evento</h1>
                         <div class="event-quick-info">
                             <span>📅 <span id="ed-data">--</span></span>
-                            <span>📍 <span id="ed-local">--</span></span>
+                            <span id="ed-local-container">📍 <span id="ed-local">--</span></span>
+                            <span id="ed-link-container" class="hidden">🔗 <a id="ed-link" href="#" target="_blank">Abrir Link</a></span>
                         </div>
                     </div>
                 </div>
@@ -584,11 +598,19 @@
                         <p id="ed-desc">Descrição do evento...</p>
                     </section>
 
-                    <section class="ed-card">
+                    <section class="ed-card" id="ed-map-section">
                         <h3>Localização</h3>
-                        <div class="map-placeholder">
-                            <span class="input-icon">📍</span>
-                            <span id="ed-local-full">--</span>
+                        <div class="map-container">
+                            <iframe id="ed-map-frame" width="100%" height="250" style="border:0; border-radius: 12px;" allowfullscreen="" loading="lazy"></iframe>
+                        </div>
+                        <p id="ed-local-full" style="margin-top: 12px; font-weight: 500;"></p>
+                    </section>
+
+                    <section class="ed-card hidden" id="ed-link-section">
+                        <h3>Link do Evento</h3>
+                        <div class="link-display">
+                            <span class="input-icon">🔗</span>
+                            <a id="ed-link-url" href="#" target="_blank" style="color: var(--brand-light); word-break: break-all;">--</a>
                         </div>
                     </section>
                 </div>
@@ -628,7 +650,7 @@
                 <h3>Recuperar Password</h3>
                 <p>Introduza o seu email registado. Enviaremos instruções para repor a password.</p>
                 <div class="field-group" id="grp-recover-email">
-                    <label for="recoverEmail">Email registado</label>
+                    <label for="recoverEmail">Email registado <span class="required">*</span></label>
                     <div class="input-wrapper">
                         <span class="input-icon">✉</span>
                         <input type="email" id="recoverEmail" placeholder="exemplo@email.com" />

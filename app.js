@@ -174,8 +174,21 @@ function initValidation() {
   });
 
   ceForm.querySelectorAll('input, textarea, select').forEach(el => {
-    el.addEventListener('input', () => clearField(el.id));
+    el.addEventListener('input', () => {
+      clearField(el.id);
+      if (el.id === 'ce-local') updateCreateMapPreview();
+    });
   });
+}
+
+function updateCreateMapPreview() {
+  const local = document.getElementById('ce-local').value.trim();
+  const preview = document.getElementById('ce-map-preview');
+  if (local && local.length > 3) {
+    preview.src = `https://maps.google.com/maps?q=${encodeURIComponent(local)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+  } else {
+    preview.src = 'about:blank';
+  }
 }
 
 function valRegNome() {
@@ -419,8 +432,45 @@ function renderEventDetails(id) {
   document.getElementById('ed-titulo').textContent = ev.titulo;
   document.getElementById('ed-desc').textContent = ev.desc;
   document.getElementById('ed-data').textContent = new Date(ev.data).toLocaleString('pt-PT');
-  document.getElementById('ed-local').textContent = ev.local;
-  document.getElementById('ed-local-full').textContent = ev.local;
+  
+  // Local & Map logic
+  const localEl = document.getElementById('ed-local');
+  const localFullEl = document.getElementById('ed-local-full');
+  const localContainer = document.getElementById('ed-local-container');
+  const mapSection = document.getElementById('ed-map-section');
+  const mapFrame = document.getElementById('ed-map-frame');
+
+  if (ev.local) {
+    localEl.textContent = ev.local;
+    localFullEl.textContent = ev.local;
+    localContainer.classList.remove('hidden');
+    mapSection.classList.remove('hidden');
+    
+    // Encode address for Google Maps embed (reliable no-key method)
+    const encodedAddress = encodeURIComponent(ev.local);
+    mapFrame.src = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+  } else {
+    localContainer.classList.add('hidden');
+    mapSection.classList.add('hidden');
+  }
+
+  // Link logic
+  const linkEl = document.getElementById('ed-link');
+  const linkUrlEl = document.getElementById('ed-link-url');
+  const linkContainer = document.getElementById('ed-link-container');
+  const linkSection = document.getElementById('ed-link-section');
+
+  if (ev.link) {
+    linkEl.href = ev.link;
+    linkUrlEl.href = ev.link;
+    linkUrlEl.textContent = ev.link;
+    linkContainer.classList.remove('hidden');
+    linkSection.classList.remove('hidden');
+  } else {
+    linkContainer.classList.add('hidden');
+    linkSection.classList.add('hidden');
+  }
+
   document.getElementById('ed-capac').textContent = ev.capac;
 
   const status = document.getElementById('ed-status');
@@ -476,6 +526,7 @@ function initEventLogic() {
     const desc = document.getElementById('ce-desc').value.trim();
     const data = document.getElementById('ce-data').value;
     const local = document.getElementById('ce-local').value.trim();
+    const link = document.getElementById('ce-link').value.trim();
     const formato = document.getElementById('ce-formato').value;
     const capac = document.getElementById('ce-capacidade').value;
     const estado = ceForm.querySelector('input[name="ce-estado"]:checked').value;
@@ -486,6 +537,8 @@ function initEventLogic() {
     if (!data) valid = setFieldError('ce-data', 'Obrigatório.');
     else if (new Date(data) < new Date()) valid = setFieldError('ce-data', 'Data deve ser futura.');
     if (!local) valid = setFieldError('ce-local', 'Obrigatório.');
+    // link is optional, but if present should be valid URL
+    if (link && !link.startsWith('http')) valid = setFieldError('ce-link', 'URL inválido.');
     if (!formato) valid = setFieldError('ce-formato', 'Obrigatório.');
     if (!capac || capac < 1) valid = setFieldError('ce-capacidade', 'Inválido.');
 
@@ -499,7 +552,7 @@ function initEventLogic() {
 
     const eventId = Math.random().toString(36).substr(2, 6);
     const newEvent = {
-      id: eventId, titulo, desc, data, local, formato, capac, estado,
+      id: eventId, titulo, desc, data, local, link, formato, capac, estado,
       imgPreview: ceForm.dataset.img || null,
       url: `https://eventhub.com/e/${eventId}`,
       organizer: getSession().userId,

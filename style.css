@@ -1416,6 +1416,29 @@ input[type="radio"] {
     color: var(--text-muted);
 }
 
+.map-container {
+    background: var(--surface-2);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    line-height: 0;
+}
+
+.link-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.required {
+    color: var(--error);
+    margin-left: 2px;
+}
+
 .map-placeholder {
     background: var(--surface-2);
     height: 100px;
