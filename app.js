@@ -56,6 +56,8 @@ const ceImgInput = document.getElementById('ce-imagem');
 const ceImgPreview = document.getElementById('ce-img-preview');
 const ceUploadUI = document.getElementById('ce-upload-ui');
 const ceDropzone = document.getElementById('ce-img-dropzone');
+let tempSessions = []; // Temp storage for sessions during event creation
+let editingEventId = null; // To track which event we might be editing sessions for
 
 // ── INITIALIZATION ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -106,7 +108,21 @@ function initRouting() {
   document.getElementById('ce-go-dash').addEventListener('click', () => {
     ceForm.classList.remove('hidden');
     document.getElementById('ce-success').classList.add('hidden');
+    tempSessions = [];
+    renderTempSessions();
     showView('dashboard');
+  });
+
+  // Session Modal
+  document.getElementById('ce-add-session-btn').addEventListener('click', () => openSessionModal());
+  document.getElementById('closeSessionModal').addEventListener('click', () => document.getElementById('sessionModal').classList.add('hidden'));
+  document.getElementById('sessionForm').addEventListener('submit', handleSessionSubmit);
+  document.getElementById('sess-tipo').addEventListener('change', (e) => {
+    document.getElementById('lbl-sess-local').textContent = e.target.value === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
+  });
+  document.getElementById('ed-add-session-inline').addEventListener('click', () => {
+    const evId = document.getElementById('ed-hero').dataset.eventId;
+    openSessionModal(evId);
   });
 }
 
@@ -481,16 +497,196 @@ function renderEventDetails(id) {
   const hero = document.getElementById('ed-hero');
   const img = ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&q=80';
   hero.style.backgroundImage = `url("${img}")`;
+  hero.dataset.eventId = id;
 
   // Organizer info
   const orgName = ev.orgName || (getSession().nome);
   document.getElementById('ed-org-name').textContent = orgName;
   document.getElementById('ed-org-avatar').textContent = orgName.split(' ').map(n => n[0]).join('');
+
+  // Agenda / Sessions
+  renderAgenda(ev);
 }
 
-// Global helper for onclick
+function renderAgenda(event) {
+  const list = document.getElementById('ed-sessions-list');
+  const addBtn = document.getElementById('ed-add-session-inline');
+  const session = getSession();
+  const isOrganizer = event.organizer === session?.userId;
+
+  if (isOrganizer) addBtn.classList.remove('hidden');
+  else addBtn.classList.add('hidden');
+
+  if (!event.sessions || event.sessions.length === 0) {
+    list.innerHTML = '<p class="empty-msg">Nenhuma sessão programada.</p>';
+    return;
+  }
+
+  // Sort sessions by start time
+  const sorted = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+  list.innerHTML = sorted.map(s => `
+    <div class="session-item">
+      <div class="session-time">
+        <span class="time-start">${s.inicio}</span>
+        <span class="time-sep">-</span>
+        <span class="time-end">${s.fim}</span>
+      </div>
+      <div class="session-info">
+        <h4>${s.titulo}</h4>
+        <p>${s.desc}</p>
+        <div class="session-meta">
+          <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
+          <span>👥 Máx: ${s.capacidade}</span>
+        </div>
+      </div>
+      ${isOrganizer ? `
+        <div class="session-actions">
+          <button class="btn-icon" onclick="app.editSession('${event.id}', '${s.id}')" title="Editar">✏️</button>
+          <button class="btn-icon btn-icon--danger" onclick="app.deleteSession('${event.id}', '${s.id}')" title="Eliminar">🗑️</button>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+function openSessionModal(eventId = null, sessionId = null) {
+  const modal = document.getElementById('sessionModal');
+  const form = document.getElementById('sessionForm');
+  const title = document.getElementById('sessionModalTitle');
+  const error = document.getElementById('sess-error');
+  
+  form.reset();
+  error.textContent = '';
+  editingEventId = eventId;
+  
+  if (sessionId) {
+    title.textContent = 'Editar Sessão';
+    const event = eventId ? getEvents().find(e => e.id === eventId) : null;
+    const sess = event ? event.sessions.find(s => s.id === sessionId) : tempSessions.find(s => s.id === sessionId);
+    
+    if (sess) {
+      document.getElementById('sess-id').value = sess.id;
+      document.getElementById('sess-titulo').value = sess.titulo;
+      document.getElementById('sess-desc').value = sess.desc;
+      document.getElementById('sess-inicio').value = sess.inicio;
+      document.getElementById('sess-fim').value = sess.fim;
+      document.getElementById('sess-tipo').value = sess.tipo;
+      document.getElementById('sess-capacidade').value = sess.capacidade;
+      document.getElementById('sess-local').value = sess.local;
+      document.getElementById('lbl-sess-local').textContent = sess.tipo === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
+    }
+  } else {
+    title.textContent = 'Adicionar Sessão';
+    document.getElementById('sess-id').value = '';
+  }
+  
+  modal.classList.remove('hidden');
+}
+
+function handleSessionSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('sess-id').value || Math.random().toString(36).substr(2, 6);
+  const titulo = document.getElementById('sess-titulo').value.trim();
+  const desc = document.getElementById('sess-desc').value.trim();
+  const inicio = document.getElementById('sess-inicio').value;
+  const fim = document.getElementById('sess-fim').value;
+  const tipo = document.getElementById('sess-tipo').value;
+  const capacidade = parseInt(document.getElementById('sess-capacidade').value);
+  const local = document.getElementById('sess-local').value.trim();
+  const error = document.getElementById('sess-error');
+
+  if (inicio >= fim) {
+    error.textContent = 'A hora de fim deve ser após o início.';
+    return;
+  }
+
+  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local };
+  
+  // Validation of conflicts
+  const currentSessions = editingEventId ? (getEvents().find(e => e.id === editingEventId)?.sessions || []) : tempSessions;
+  const otherSessions = currentSessions.filter(s => s.id !== id);
+  
+  const conflict = otherSessions.find(s => (inicio < s.fim) && (fim > s.inicio));
+  if (conflict) {
+    error.textContent = `Conflito de horário com a sessão: ${conflict.titulo}`;
+    return;
+  }
+
+  if (editingEventId) {
+    // Direct update of existing event
+    const events = getEvents();
+    const ev = events.find(e => e.id === editingEventId);
+    if (ev) {
+      const idx = ev.sessions ? ev.sessions.findIndex(s => s.id === id) : -1;
+      if (idx > -1) ev.sessions[idx] = newSess;
+      else {
+        if (!ev.sessions) ev.sessions = [];
+        ev.sessions.push(newSess);
+      }
+      saveEvents(events);
+      renderAgenda(ev);
+    }
+  } else {
+    // Update temp sessions for new event
+    const idx = tempSessions.findIndex(s => s.id === id);
+    if (idx > -1) tempSessions[idx] = newSess;
+    else tempSessions.push(newSess);
+    renderTempSessions();
+  }
+
+  document.getElementById('sessionModal').classList.add('hidden');
+}
+
+function renderTempSessions() {
+  const list = document.getElementById('ce-sessions-list');
+  if (tempSessions.length === 0) {
+    list.classList.add('hidden');
+    return;
+  }
+  
+  list.classList.remove('hidden');
+  const sorted = [...tempSessions].sort((a, b) => a.inicio.localeCompare(b.inicio));
+  
+  list.innerHTML = `
+    <h4>Agenda Pré-visualização (${tempSessions.length} sessões)</h4>
+    <div class="temp-sessions-grid">
+      ${sorted.map(s => `
+        <div class="temp-session-card">
+          <div class="temp-sess-time">${s.inicio} - ${s.fim}</div>
+          <div class="temp-sess-main">
+            <strong>${s.titulo}</strong>
+            <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
+          </div>
+          <div class="temp-sess-actions">
+            <button type="button" onclick="app.editSession(null, '${s.id}')">✏️</button>
+            <button type="button" onclick="app.deleteSession(null, '${s.id}')">🗑️</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Update Global helper
 window.app = {
-  visitEvent: (id) => showView('details', { id })
+  visitEvent: (id) => showView('details', { id }),
+  editSession: (eventId, sessionId) => openSessionModal(eventId, sessionId),
+  deleteSession: (eventId, sessionId) => {
+    if (!confirm('Deseja eliminar esta sessão?')) return;
+    if (eventId) {
+      const events = getEvents();
+      const ev = events.find(e => e.id === eventId);
+      if (ev) {
+        ev.sessions = ev.sessions.filter(s => s.id !== sessionId);
+        saveEvents(events);
+        renderAgenda(ev);
+      }
+    } else {
+      tempSessions = tempSessions.filter(s => s.id !== sessionId);
+      renderTempSessions();
+    }
+  }
 };
 
 function logout() {
@@ -553,6 +749,7 @@ function initEventLogic() {
     const eventId = Math.random().toString(36).substr(2, 6);
     const newEvent = {
       id: eventId, titulo, desc, data, local, link, formato, capac, estado,
+      sessions: tempSessions,
       imgPreview: ceForm.dataset.img || null,
       url: `https://eventhub.com/e/${eventId}`,
       organizer: getSession().userId,
@@ -575,6 +772,8 @@ function initEventLogic() {
     ceBtn.querySelector('.btn-text').classList.remove('hidden');
     ceBtn.querySelector('.btn-spinner').classList.add('hidden');
     ceForm.reset();
+    tempSessions = [];
+    renderTempSessions();
     delete ceForm.dataset.img;
     ceImgPreview.classList.add('hidden');
     ceUploadUI.classList.remove('hidden');

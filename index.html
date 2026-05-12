@@ -517,10 +517,18 @@
                     </div>
 
                     <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="ce-add-session-btn" style="margin-right: auto;">
+                            <span>+</span> Adicionar Sessão à Agenda
+                        </button>
                         <button type="submit" class="btn btn-primary" id="ce-submit-btn">
                             <span class="btn-text">Criar Evento</span>
                             <span class="btn-spinner hidden"></span>
                         </button>
+                    </div>
+
+                    <!-- Lista de Sessões em rascunho -->
+                    <div id="ce-sessions-list" class="sessions-preview-grid hidden">
+                        <!-- Sessões adicionadas aparecerão aqui -->
                     </div>
                 </form>
             </div>
@@ -598,6 +606,17 @@
                         <p id="ed-desc">Descrição do evento...</p>
                     </section>
 
+                    <section class="ed-card" id="ed-agenda-section">
+                        <div class="card-header-flex">
+                            <h3>Agenda do Evento</h3>
+                            <button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessão</button>
+                        </div>
+                        <div id="ed-sessions-list" class="agenda-timeline">
+                            <!-- Sessões serão listadas aqui -->
+                            <p class="empty-msg">Nenhuma sessão programada.</p>
+                        </div>
+                    </section>
+
                     <section class="ed-card" id="ed-map-section">
                         <h3>Localização</h3>
                         <div class="map-container">
@@ -641,33 +660,54 @@
     </div>
 
 
-    <!-- ═══════════ MODAL: RECUPERAÇÃO ═══════════ -->
-    <div id="recoverModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-        <div class="modal">
-            <button class="modal-close" id="closeModal" aria-label="Fechar">✕</button>
-            <div id="recover-form-div">
-                <div class="modal-icon modal-icon--warn">🔑</div>
-                <h3>Recuperar Password</h3>
-                <p>Introduza o seu email registado. Enviaremos instruções para repor a password.</p>
-                <div class="field-group" id="grp-recover-email">
-                    <label for="recoverEmail">Email registado <span class="required">*</span></label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">✉</span>
-                        <input type="email" id="recoverEmail" placeholder="exemplo@email.com" />
-                    </div>
-                    <span class="error-msg" id="err-recover-email" role="alert"></span>
+    <!-- ═══════════ MODAL: SESSÃO ═══════════ -->
+    <div id="sessionModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal modal-lg">
+            <button class="modal-close" id="closeSessionModal" aria-label="Fechar">✕</button>
+            <div class="modal-header">
+                <h3 id="sessionModalTitle">Adicionar Sessão</h3>
+                <p>Defina os detalhes da palestra ou atividade</p>
+            </div>
+            <form id="sessionForm">
+                <input type="hidden" id="sess-id" />
+                <div class="field-group">
+                    <label for="sess-titulo">Título da Sessão <span class="required">*</span></label>
+                    <input type="text" id="sess-titulo" placeholder="Ex: Abertura e Keynote" required />
                 </div>
-                <button class="btn btn-primary btn-full" id="sendRecoverBtn">
-                    <span class="btn-text">Enviar instruções</span>
-                    <span class="btn-spinner hidden"></span>
-                </button>
-            </div>
-            <div id="recover-success-div" class="hidden">
-                <div class="modal-icon modal-icon--success">✔</div>
-                <h3>Email enviado!</h3>
-                <p>Verifique a sua caixa de entrada em <strong id="recoverSentTo"></strong> para as instruções.</p>
-                <button class="btn btn-primary btn-full" id="closeRecoverSuccess">Fechar</button>
-            </div>
+                <div class="field-group">
+                    <label for="sess-desc">Descrição <span class="required">*</span></label>
+                    <textarea id="sess-desc" rows="3" placeholder="O que será abordado nesta sessão?" required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="field-group">
+                        <label for="sess-inicio">Hora de Início <span class="required">*</span></label>
+                        <input type="time" id="sess-inicio" required />
+                    </div>
+                    <div class="field-group">
+                        <label for="sess-fim">Hora de Fim <span class="required">*</span></label>
+                        <input type="time" id="sess-fim" required />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="field-group">
+                        <label for="sess-tipo">Tipo <span class="required">*</span></label>
+                        <select id="sess-tipo" required>
+                            <option value="presencial">Presencial (Sala/Local)</option>
+                            <option value="online">Online (Link)</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="sess-capacidade">Capacidade Máxima <span class="required">*</span></label>
+                        <input type="number" id="sess-capacidade" min="1" placeholder="Ex: 30" required />
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label for="sess-local" id="lbl-sess-local">Sala / Local <span class="required">*</span></label>
+                    <input type="text" id="sess-local" placeholder="Ex: Sala A1 ou Link Zoom" required />
+                </div>
+                <div id="sess-error" class="error-msg" style="margin-bottom: 15px; text-align: center;"></div>
+                <button type="submit" class="btn btn-primary btn-full" id="sess-save-btn">Guardar Sessão</button>
+            </form>
         </div>
     </div>
 
