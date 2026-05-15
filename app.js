@@ -17,7 +17,8 @@ const views = {
   dashboard: document.getElementById('view-dashboard'),
   createEvent: document.getElementById('view-create-event'),
   listEvents: document.getElementById('view-list-events'),
-  details: document.getElementById('view-event-details')
+  details: document.getElementById('view-event-details'),
+  agenda: document.getElementById('view-full-agenda')
 };
 
 // ── DOM ELEMENTS: REGISTO ──
@@ -125,6 +126,7 @@ function showView(viewId, params = {}) {
   if (viewId === 'dashboard') populateDashboard(getSession());
   if (viewId === 'listEvents') populateEventsGrid();
   if (viewId === 'details') renderEventDetails(params.id);
+  if (viewId === 'agenda') renderFullAgenda(params.id);
 }
 
 function initRouting() {
@@ -146,6 +148,31 @@ function initRouting() {
   document.getElementById('nav-back-dash')?.addEventListener('click', e => { e.preventDefault(); showView('dashboard'); });
   document.getElementById('btn-cancel-create').addEventListener('click', () => showView('dashboard'));
   document.getElementById('btn-back-from-details').addEventListener('click', () => showView('listEvents'));
+  
+  document.getElementById('btn-view-full-agenda').addEventListener('click', () => {
+    const id = document.getElementById('ed-hero').dataset.eventId;
+    showView('agenda', { id });
+  });
+
+  document.getElementById('btn-back-from-agenda').addEventListener('click', () => {
+    const id = document.getElementById('ed-hero').dataset.eventId;
+    showView('details', { id });
+  });
+
+  document.getElementById('btn-export-pdf').addEventListener('click', () => {
+    window.print();
+  });
+
+  // Filters
+  ['filter-day', 'filter-type', 'filter-speaker', 'filter-room'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => {
+        const evId = document.getElementById('ed-hero').dataset.eventId;
+        renderFullAgenda(evId);
+      });
+    }
+  });
 
   document.getElementById('ce-go-dash').addEventListener('click', () => {
     ceForm.classList.remove('hidden');
@@ -1013,3 +1040,114 @@ function initModals() {
     btn.disabled = false; btn.querySelector('.btn-spinner').classList.add('hidden');
   });
 }
+
+// ── FULL AGENDA LOGIC ──
+function renderFullAgenda(eventId) {
+  const events = getEvents();
+  // Ensure we have dummy data for testing if no events exist
+  const dummy = [
+    { 
+      id: 'd1', 
+      titulo: 'Workshop React', 
+      data: '2026-05-15T10:00', 
+      sessions: [
+        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Sessão de boas-vindas e apresentação dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk1'], capacidade: 100 },
+        { id: 's2', titulo: 'Hooks Avançados', desc: 'Exploração profunda de useMemo, useCallback e hooks customizados.', inicio: '11:00', fim: '12:30', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk2'], capacidade: 50 },
+        { id: 's3', titulo: 'CSS-in-JS vs Tailwind', desc: 'Painel de discussão sobre o futuro do styling em aplicações modernas.', inicio: '11:00', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', speakerIds: ['spk3'], capacidade: 200 },
+        { id: 's4', titulo: 'State Management 2026', desc: 'Zustand, Redux ou Context API? O que escolher.', inicio: '14:00', fim: '15:30', tipo: 'presencial', local: 'Sala B1', speakerIds: ['spk1', 'spk2'], capacidade: 40 }
+      ] 
+    }
+  ];
+
+  const ev = [...dummy, ...events].find(e => e.id === eventId);
+  if (!ev) { showView('listEvents'); return; }
+
+  document.getElementById('fa-event-title').textContent = ev.titulo;
+  const dateObj = new Date(ev.data);
+  document.getElementById('fa-event-date').textContent = dateObj.toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  const sessions = ev.sessions || [];
+  const speakers = getSpeakers();
+
+  // Populate Filters if empty
+  const fSpeaker = document.getElementById('filter-speaker');
+  const fRoom = document.getElementById('filter-room');
+  
+  if (fSpeaker.options.length <= 1) {
+    const sessionSpeakerIds = [...new Set(sessions.flatMap(s => s.speakerIds || []))];
+    sessionSpeakerIds.forEach(sid => {
+      const spk = speakers.find(x => x.id === sid);
+      if (spk) fSpeaker.add(new Option(spk.nome, sid));
+    });
+  }
+  if (fRoom.options.length <= 1) {
+    const rooms = [...new Set(sessions.map(s => s.local))];
+    rooms.forEach(r => fRoom.add(new Option(r, r)));
+  }
+
+  // Filter Logic
+  const valType = document.getElementById('filter-type').value;
+  const valSpeaker = document.getElementById('filter-speaker').value;
+  const valRoom = document.getElementById('filter-room').value;
+
+  const filtered = sessions.filter(s => {
+    if (valType !== 'all' && s.tipo !== valType) return false;
+    if (valSpeaker !== 'all' && !(s.speakerIds || []).includes(valSpeaker)) return false;
+    if (valRoom !== 'all' && s.local !== valRoom) return false;
+    return true;
+  });
+
+  // Sort by time
+  filtered.sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+  // Render Grid
+  const grid = document.getElementById('agenda-calendar-grid');
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="padding: 60px; text-align: center;">
+        <div class="success-icon" style="background: var(--surface-2); color: var(--text-muted);">🔍</div>
+        <p>Nenhuma sessão corresponde aos filtros aplicados.</p>
+        <button class="btn-text-sm" onclick="document.querySelectorAll('.agenda-filters select').forEach(s => s.value='all'); app.renderFullAgenda('${ev.id}')">Limpar Filtros</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Group by time slots
+  const slots = {};
+  filtered.forEach(s => {
+    if (!slots[s.inicio]) slots[s.inicio] = [];
+    slots[s.inicio].push(s);
+  });
+
+  grid.innerHTML = Object.entries(slots).sort((a,b) => a[0].localeCompare(b[0])).map(([time, sessList]) => `
+    <div class="calendar-row">
+      <div class="calendar-time">${time}</div>
+      <div class="calendar-tracks">
+        ${sessList.map(s => {
+          const isParallel = sessList.length > 1;
+          const sSpks = (s.speakerIds || []).map(sid => {
+            const spk = speakers.find(x => x.id === sid);
+            return spk ? `<span class="speaker-badge" onclick="event.stopPropagation(); app.viewSpeaker('${spk.id}')">${spk.nome}</span>` : '';
+          }).join('');
+          
+          return `
+            <div class="calendar-session-card" onclick="app.editSession('${ev.id}', '${s.id}')">
+              ${isParallel ? '<span class="parallel-indicator">Paralela</span>' : ''}
+              <h3>${s.titulo}</h3>
+              <p>${s.desc}</p>
+              <div class="card-meta-info">
+                <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
+                <div class="session-speakers" style="margin-top:0;">${sSpks}</div>
+                <span title="Capacidade">👥 ${s.capacidade}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// Add to window.app for filter cleaning
+window.app.renderFullAgenda = renderFullAgenda;
