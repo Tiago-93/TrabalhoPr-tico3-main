@@ -1,4 +1,4 @@
-  /* ============================================================
+/* ============================================================
    EventHub — Lógica Unificada (app.js)
    SPA: Register, Login, Dashboard, Recovery, Create Event, List, Details
    ============================================================ */
@@ -58,6 +58,11 @@ const ceUploadUI = document.getElementById('ce-upload-ui');
 const ceDropzone = document.getElementById('ce-img-dropzone');
 let tempSessions = []; // Temp storage for sessions during event creation
 let editingEventId = null; // To track which event we might be editing sessions for
+let sessSpeakers = []; // Temp storage for speakers in the current session modal
+
+const SPEAKERS_KEY = 'eh_speakers';
+const getSpeakers = () => JSON.parse(localStorage.getItem(SPEAKERS_KEY) || '[]');
+const saveSpeakers = (s) => localStorage.setItem(SPEAKERS_KEY, JSON.stringify(s));
 
 // ── INITIALIZATION ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -66,13 +71,50 @@ document.addEventListener('DOMContentLoaded', () => {
   initToggles();
   initModals();
   initEventLogic();
+  initDefaultSpeakers();
   checkSession();
 });
+
+function initDefaultSpeakers() {
+  const speakers = getSpeakers();
+  if (speakers.length === 0) {
+    const defaults = [
+      {
+        id: 'spk1',
+        nome: 'Dra. Ana Silva',
+        bio: 'Especialista em Inteligência Artificial e Professora Catedrática no IST. Com mais de 15 anos de experiência, tem liderado projetos inovadores na área de Machine Learning.',
+        contacto: 'ana.silva@exemplo.pt | linkedin.com/in/anasilva',
+        foto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80'
+      },
+      {
+        id: 'spk2',
+        nome: 'Eng. Ricardo Pereira',
+        bio: 'Arquiteto de Software na CloudTech. Especialista em infraestrutura escalável e micro-serviços. Orador habitual em conferências internacionais de tecnologia.',
+        contacto: 'ricardo.p@cloudtech.com | @rpereira_tech',
+        foto: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80'
+      },
+      {
+        id: 'spk3',
+        nome: 'Maria João Santos',
+        bio: 'Product Designer na DesignFlow. Focada em criar experiências de utilizador memoráveis e acessíveis. Mentora de UX/UI para startups.',
+        contacto: 'mjsantos@designflow.io',
+        foto: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80'
+      }
+    ];
+    saveSpeakers(defaults);
+  }
+}
 
 // ── ROUTING ──
 function showView(viewId, params = {}) {
   Object.values(views).forEach(v => v.classList.add('hidden'));
   views[viewId].classList.remove('hidden');
+
+  // Close any open modals
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+  // Close search results
+  const searchResults = document.getElementById('speaker-search-results');
+  if (searchResults) searchResults.classList.add('hidden');
 
   // Update sidebar active state
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -86,9 +128,9 @@ function showView(viewId, params = {}) {
 }
 
 function initRouting() {
-  document.getElementById('goLogin').addEventListener('click', e => { e.preventDefault(); showView('login'); });
-  document.getElementById('goRegister').addEventListener('click', e => { e.preventDefault(); showView('register'); });
-  document.getElementById('reg-goLogin').addEventListener('click', () => showView('login'));
+  document.getElementById('goLogin')?.addEventListener('click', e => { e.preventDefault(); showView('login'); });
+  document.getElementById('goRegister')?.addEventListener('click', e => { e.preventDefault(); showView('register'); });
+  document.getElementById('reg-goLogin')?.addEventListener('click', () => showView('login'));
 
   // Handle ALL sidebar and navigation links with data-target
   document.addEventListener('click', e => {
@@ -123,6 +165,27 @@ function initRouting() {
   document.getElementById('ed-add-session-inline').addEventListener('click', () => {
     const evId = document.getElementById('ed-hero').dataset.eventId;
     openSessionModal(evId);
+  });
+
+  // Speaker Logic
+  document.getElementById('sess-speaker-search').addEventListener('input', handleSpeakerSearch);
+  document.getElementById('btn-add-speaker-manual').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.remove('hidden'));
+  document.getElementById('closeNewSpeakerModal').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.add('hidden'));
+  document.getElementById('newSpeakerForm').addEventListener('submit', handleNewSpeakerSubmit);
+  document.getElementById('closeProfileModal').addEventListener('click', () => document.getElementById('speakerProfileModal').classList.add('hidden'));
+
+  // Close search results when clicking outside
+  document.addEventListener('click', e => {
+    const searchBox = document.querySelector('.speaker-search-box');
+    const results = document.getElementById('speaker-search-results');
+    if (searchBox && !searchBox.contains(e.target) && results) {
+      results.classList.add('hidden');
+    }
+    
+    // Close modals on clicking overlay
+    if (e.target.classList.contains('modal-overlay')) {
+      e.target.classList.add('hidden');
+    }
   });
 }
 
@@ -346,14 +409,14 @@ function populateDashboard(s) {
     if (a) a.textContent = initials;
   };
 
-  dashName.textContent = firstName;
-  sbName.textContent = s.nome;
-  sbEmail.textContent = s.email;
-  sbAvatar.textContent = initials;
-  sessUser.textContent = s.nome;
-  sessEmail.textContent = s.email;
-  sessAt.textContent = new Date(s.loginAt).toLocaleString('pt-PT');
-  sessType.textContent = s.persistent ? 'Persistente (Lembrar-me)' : 'Temporária (Tab)';
+  if (dashName) dashName.textContent = firstName;
+  if (sbName) sbName.textContent = s.nome;
+  if (sbEmail) sbEmail.textContent = s.email;
+  if (sbAvatar) sbAvatar.textContent = initials;
+  if (sessUser) sessUser.textContent = s.nome;
+  if (sessEmail) sessEmail.textContent = s.email;
+  if (sessAt) sessAt.textContent = new Date(s.loginAt).toLocaleString('pt-PT');
+  if (sessType) sessType.textContent = s.persistent ? 'Persistente (Lembrar-me)' : 'Temporária (Tab)';
 
   syncSB('ce'); syncSB('le');
 
@@ -373,10 +436,15 @@ function updateStats() {
   const total = events.length + dummy.length;
   const upcoming = events.filter(e => new Date(e.data) > new Date()).length + dummy.length;
 
-  document.getElementById('stat-events-count').textContent = total;
-  document.getElementById('stat-events-badge').textContent = `+${events.length} este mês`;
-  document.getElementById('stat-upcoming-count').textContent = upcoming;
-  document.getElementById('stat-part-count').textContent = (total * 25) + 12; // Just for visuals
+  const elCount = document.getElementById('stat-events-count');
+  const elBadge = document.getElementById('stat-events-badge');
+  const elUpcoming = document.getElementById('stat-upcoming-count');
+  const elPart = document.getElementById('stat-part-count');
+
+  if (elCount) elCount.textContent = total;
+  if (elBadge) elBadge.textContent = `+${events.length} este mês`;
+  if (elUpcoming) elUpcoming.textContent = upcoming;
+  if (elPart) elPart.textContent = (total * 25) + 12; // Just for visuals
 }
 
 function populateEventsTable() {
@@ -535,6 +603,23 @@ function renderAgenda(event) {
       <div class="session-info">
         <h4>${s.titulo}</h4>
         <p>${s.desc}</p>
+        
+        ${s.speakerIds && s.speakerIds.length > 0 ? `
+          <div class="session-speakers">
+            ${s.speakerIds.map(sid => {
+              const spk = getSpeakers().find(x => x.id === sid);
+              if (!spk) return '';
+              const photo = spk.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80';
+              return `
+                <div class="speaker-badge" onclick="app.viewSpeaker('${spk.id}')" title="Ver perfil de ${spk.nome}">
+                  <img src="${photo}" class="avatar-xs" alt="">
+                  <span>${spk.nome}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : ''}
+
         <div class="session-meta">
           <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
           <span>👥 Máx: ${s.capacidade}</span>
@@ -559,6 +644,7 @@ function openSessionModal(eventId = null, sessionId = null) {
   form.reset();
   error.textContent = '';
   editingEventId = eventId;
+  sessSpeakers = [];
   
   if (sessionId) {
     title.textContent = 'Editar Sessão';
@@ -575,13 +661,67 @@ function openSessionModal(eventId = null, sessionId = null) {
       document.getElementById('sess-capacidade').value = sess.capacidade;
       document.getElementById('sess-local').value = sess.local;
       document.getElementById('lbl-sess-local').textContent = sess.tipo === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
+      sessSpeakers = sess.speakerIds || [];
     }
   } else {
     title.textContent = 'Adicionar Sessão';
     document.getElementById('sess-id').value = '';
   }
   
+  renderSessSpeakers();
   modal.classList.remove('hidden');
+}
+
+function handleSpeakerSearch(e) {
+  const q = e.target.value.toLowerCase().trim();
+  const results = document.getElementById('speaker-search-results');
+  if (q.length < 2) { results.classList.add('hidden'); return; }
+
+  const filtered = getSpeakers().filter(s => s.nome.toLowerCase().includes(q) && !sessSpeakers.includes(s.id));
+  if (filtered.length === 0) { results.classList.add('hidden'); return; }
+
+  results.innerHTML = filtered.map(s => `
+    <div class="search-item" onclick="app.addSpeakerToSess('${s.id}')">
+      <img src="${s.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80'}" class="avatar-xs" />
+      <div class="search-item-info">
+        <strong>${s.nome}</strong>
+        <small>${s.contacto}</small>
+      </div>
+    </div>
+  `).join('');
+  results.classList.remove('hidden');
+}
+
+function renderSessSpeakers() {
+  const container = document.getElementById('sess-speakers-list');
+  const speakers = getSpeakers();
+  container.innerHTML = sessSpeakers.map(id => {
+    const s = speakers.find(x => x.id === id);
+    return s ? `
+      <div class="speaker-tag">
+        <span>${s.nome}</span>
+        <button type="button" onclick="app.removeSpeakerFromSess('${id}')">✕</button>
+      </div>
+    ` : '';
+  }).join('');
+}
+
+function handleNewSpeakerSubmit(e) {
+  e.preventDefault();
+  const nome = document.getElementById('spk-nome').value.trim();
+  const bio = document.getElementById('spk-bio').value.trim();
+  const contacto = document.getElementById('spk-contacto').value.trim();
+  const foto = document.getElementById('spk-foto').value.trim();
+
+  const id = Math.random().toString(36).substr(2, 6);
+  const speakers = getSpeakers();
+  speakers.push({ id, nome, bio, contacto, foto });
+  saveSpeakers(speakers);
+
+  sessSpeakers.push(id);
+  renderSessSpeakers();
+  document.getElementById('newSpeakerModal').classList.add('hidden');
+  document.getElementById('newSpeakerForm').reset();
 }
 
 function handleSessionSubmit(e) {
@@ -601,7 +741,7 @@ function handleSessionSubmit(e) {
     return;
   }
 
-  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local };
+  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local, speakerIds: sessSpeakers };
   
   // Validation of conflicts
   const currentSessions = editingEventId ? (getEvents().find(e => e.id === editingEventId)?.sessions || []) : tempSessions;
@@ -686,6 +826,64 @@ window.app = {
       tempSessions = tempSessions.filter(s => s.id !== sessionId);
       renderTempSessions();
     }
+  },
+  addSpeakerToSess: (id) => {
+    if (!sessSpeakers.includes(id)) {
+      sessSpeakers.push(id);
+      renderSessSpeakers();
+    }
+    document.getElementById('sess-speaker-search').value = '';
+    document.getElementById('speaker-search-results').classList.add('hidden');
+  },
+  removeSpeakerFromSess: (id) => {
+    sessSpeakers = sessSpeakers.filter(x => x !== id);
+    renderSessSpeakers();
+  },
+  viewSpeaker: (id) => {
+    const spk = getSpeakers().find(s => s.id === id);
+    if (!spk) return;
+    
+    const events = getEvents();
+    const speakerSessions = [];
+    events.forEach(ev => {
+      if (ev.sessions) {
+        ev.sessions.forEach(sess => {
+          if (sess.speakerIds && sess.speakerIds.includes(id)) {
+            speakerSessions.push({ event: ev, session: sess });
+          }
+        });
+      }
+    });
+
+    const modal = document.getElementById('speakerProfileModal');
+    const content = document.getElementById('profile-content');
+    
+    content.innerHTML = `
+      <div class="profile-header">
+        <img src="${spk.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80'}" class="profile-avatar" />
+        <div class="profile-info">
+          <h2>${spk.nome}</h2>
+          <p class="profile-bio">${spk.bio}</p>
+          <div class="profile-contact">
+            <strong>Contacto:</strong> ${spk.contacto}
+          </div>
+        </div>
+      </div>
+      <div class="profile-sessions">
+        <h3>Sessões (${speakerSessions.length})</h3>
+        <div class="profile-sessions-list">
+          ${speakerSessions.length === 0 ? '<p>Nenhuma sessão associada ainda.</p>' : speakerSessions.map(item => `
+            <div class="profile-sess-card" onclick="app.visitEvent('${item.event.id}')">
+              <strong>${item.session.titulo}</strong>
+              <span>${item.event.titulo}</span>
+              <small>${item.session.inicio} - ${item.session.fim}</small>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
   }
 };
 
