@@ -1,16 +1,11 @@
-/* ============================================================
-   EventHub — Lógica Unificada (app.js)
-   SPA: Register, Login, Dashboard, Recovery, Create Event, List, Details
-   ============================================================ */
-
 'use strict';
 
-// ── CONFIG & STATE ──
 const USERS_KEY = 'eventhub_users';
 const SESSION_KEY = 'eventhub_session';
 const EVENTS_KEY = 'eventhub_events';
+const REGISTRATIONS_KEY = 'eventhub_registrations';
+const FEEDBACK_KEY = 'eventhub_session_feedback';
 
-// ── DOM ELEMENTS: VIEWS ──
 const views = {
   register: document.getElementById('view-register'),
   login: document.getElementById('view-login'),
@@ -18,221 +13,33 @@ const views = {
   createEvent: document.getElementById('view-create-event'),
   listEvents: document.getElementById('view-list-events'),
   details: document.getElementById('view-event-details'),
-  agenda: document.getElementById('view-full-agenda')
+  profile: document.getElementById('view-profile')
 };
 
-// ── DOM ELEMENTS: REGISTO ──
-const regForm = document.getElementById('registerForm');
-const regBtn = document.getElementById('reg-btn');
-const regNome = document.getElementById('reg-nome');
-const regEmail = document.getElementById('reg-email');
-const regPw = document.getElementById('reg-pw');
-const regCpw = document.getElementById('reg-cpw');
-const regSF = document.getElementById('reg-sf');
-const regSL = document.getElementById('reg-sl');
+let tempSessions = [];
+let editingEventId = null;
 
-// ── DOM ELEMENTS: LOGIN ──
-const loginForm = document.getElementById('loginForm');
-const loginBtn = document.getElementById('login-btn');
-const loginEmail = document.getElementById('login-email');
-const loginPw = document.getElementById('login-pw');
-const rememberMe = document.getElementById('rememberMe');
-const loginAlert = document.getElementById('loginAlert');
-const loginAlertM = document.getElementById('loginAlertMsg');
+const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
+const getEvents = () => JSON.parse(localStorage.getItem(EVENTS_KEY) || '[]');
+const saveEvents = (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+const getRegistrations = () => JSON.parse(localStorage.getItem(REGISTRATIONS_KEY) || '[]');
+const saveRegistrations = (regs) => localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(regs));
+const getFeedback = () => JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]');
+const saveFeedback = (feedback) => localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback));
+const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-// ── DOM ELEMENTS: DASHBOARD ──
-const dashName = document.getElementById('dash-name');
-const sbName = document.getElementById('sb-name');
-const sbEmail = document.getElementById('sb-email');
-const sbAvatar = document.getElementById('sb-avatar');
-const sessUser = document.getElementById('sess-user');
-const sessEmail = document.getElementById('sess-email');
-const sessAt = document.getElementById('sess-at');
-const sessType = document.getElementById('sess-type');
-
-// ── DOM ELEMENTS: CRIAR EVENTO ──
-const ceForm = document.getElementById('createEventForm');
-const ceBtn = document.getElementById('ce-submit-btn');
-const ceImgInput = document.getElementById('ce-imagem');
-const ceImgPreview = document.getElementById('ce-img-preview');
-const ceUploadUI = document.getElementById('ce-upload-ui');
-const ceDropzone = document.getElementById('ce-img-dropzone');
-let tempSessions = []; // Temp storage for sessions during event creation
-let editingEventId = null; // To track which event we might be editing sessions for
-let sessSpeakers = []; // Temp storage for speakers in the current session modal
-
-const SPEAKERS_KEY = 'eh_speakers';
-const getSpeakers = () => JSON.parse(localStorage.getItem(SPEAKERS_KEY) || '[]');
-const saveSpeakers = (s) => localStorage.setItem(SPEAKERS_KEY, JSON.stringify(s));
-
-// ── INITIALIZATION ──
 document.addEventListener('DOMContentLoaded', () => {
+  seedEvents();
   initRouting();
   initValidation();
-  initToggles();
-  initModals();
+  initAuth();
   initEventLogic();
-  initDefaultSpeakers();
+  initSessionModal();
+  initRecovery();
   checkSession();
 });
-
-function initDefaultSpeakers() {
-  const speakers = getSpeakers();
-  if (speakers.length === 0) {
-    const defaults = [
-      {
-        id: 'spk1',
-        nome: 'Dra. Ana Silva',
-        bio: 'Especialista em Inteligência Artificial e Professora Catedrática no IST. Com mais de 15 anos de experiência, tem liderado projetos inovadores na área de Machine Learning.',
-        contacto: 'ana.silva@exemplo.pt | linkedin.com/in/anasilva',
-        foto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80'
-      },
-      {
-        id: 'spk2',
-        nome: 'Eng. Ricardo Pereira',
-        bio: 'Arquiteto de Software na CloudTech. Especialista em infraestrutura escalável e micro-serviços. Orador habitual em conferências internacionais de tecnologia.',
-        contacto: 'ricardo.p@cloudtech.com | @rpereira_tech',
-        foto: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80'
-      },
-      {
-        id: 'spk3',
-        nome: 'Maria João Santos',
-        bio: 'Product Designer na DesignFlow. Focada em criar experiências de utilizador memoráveis e acessíveis. Mentora de UX/UI para startups.',
-        contacto: 'mjsantos@designflow.io',
-        foto: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80'
-      }
-    ];
-    saveSpeakers(defaults);
-  }
-}
-
-// ── ROUTING ──
-function showView(viewId, params = {}) {
-  Object.values(views).forEach(v => v.classList.add('hidden'));
-  views[viewId].classList.remove('hidden');
-
-  // Close any open modals
-  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
-  // Close search results
-  const searchResults = document.getElementById('speaker-search-results');
-  if (searchResults) searchResults.classList.add('hidden');
-
-  // Update sidebar active state
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.toggle('active', item.dataset.target === viewId);
-  });
-
-  window.scrollTo(0, 0);
-  if (viewId === 'dashboard') populateDashboard(getSession());
-  if (viewId === 'listEvents') populateEventsGrid();
-  if (viewId === 'details') renderEventDetails(params.id);
-  if (viewId === 'agenda') renderFullAgenda(params.id);
-}
-
-function initRouting() {
-  document.getElementById('goLogin')?.addEventListener('click', e => { e.preventDefault(); showView('login'); });
-  document.getElementById('goRegister')?.addEventListener('click', e => { e.preventDefault(); showView('register'); });
-  document.getElementById('reg-goLogin')?.addEventListener('click', () => showView('login'));
-
-  // Handle ALL sidebar and navigation links with data-target
-  document.addEventListener('click', e => {
-    const target = e.target.closest('[data-target]');
-    if (target) {
-      e.preventDefault();
-      showView(target.dataset.target);
-    }
-  });
-
-  document.getElementById('btn-nav-create').addEventListener('click', () => showView('createEvent'));
-  document.getElementById('btn-nav-create-le').addEventListener('click', () => showView('createEvent'));
-  document.getElementById('nav-back-dash')?.addEventListener('click', e => { e.preventDefault(); showView('dashboard'); });
-  document.getElementById('btn-cancel-create').addEventListener('click', () => showView('dashboard'));
-  document.getElementById('btn-back-from-details').addEventListener('click', () => showView('listEvents'));
-  
-  document.getElementById('btn-view-full-agenda').addEventListener('click', () => {
-    const id = document.getElementById('ed-hero').dataset.eventId;
-    showView('agenda', { id });
-  });
-
-  document.getElementById('btn-back-from-agenda').addEventListener('click', () => {
-    const id = document.getElementById('ed-hero').dataset.eventId;
-    showView('details', { id });
-  });
-
-  document.getElementById('btn-export-pdf').addEventListener('click', () => {
-    window.print();
-  });
-
-  // Filters
-  ['filter-day', 'filter-type', 'filter-speaker', 'filter-room'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('change', () => {
-        const evId = document.getElementById('ed-hero').dataset.eventId;
-        renderFullAgenda(evId);
-      });
-    }
-  });
-
-  document.getElementById('ce-go-dash').addEventListener('click', () => {
-    ceForm.classList.remove('hidden');
-    document.getElementById('ce-success').classList.add('hidden');
-    tempSessions = [];
-    renderTempSessions();
-    showView('dashboard');
-  });
-
-  // Session Modal
-  document.getElementById('ce-add-session-btn').addEventListener('click', () => openSessionModal());
-  document.getElementById('closeSessionModal').addEventListener('click', () => document.getElementById('sessionModal').classList.add('hidden'));
-  document.getElementById('sessionForm').addEventListener('submit', handleSessionSubmit);
-  document.getElementById('sess-tipo').addEventListener('change', (e) => {
-    document.getElementById('lbl-sess-local').textContent = e.target.value === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
-  });
-  document.getElementById('ed-add-session-inline').addEventListener('click', () => {
-    const evId = document.getElementById('ed-hero').dataset.eventId;
-    openSessionModal(evId);
-  });
-
-  // Speaker Logic
-  document.getElementById('sess-speaker-search').addEventListener('input', handleSpeakerSearch);
-  document.getElementById('btn-add-speaker-manual').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.remove('hidden'));
-  document.getElementById('closeNewSpeakerModal').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.add('hidden'));
-  document.getElementById('newSpeakerForm').addEventListener('submit', handleNewSpeakerSubmit);
-  document.getElementById('closeProfileModal').addEventListener('click', () => document.getElementById('speakerProfileModal').classList.add('hidden'));
-
-  // Close search results when clicking outside
-  document.addEventListener('click', e => {
-    const searchBox = document.querySelector('.speaker-search-box');
-    const results = document.getElementById('speaker-search-results');
-    if (searchBox && !searchBox.contains(e.target) && results) {
-      results.classList.add('hidden');
-    }
-    
-    // Close modals on clicking overlay
-    if (e.target.classList.contains('modal-overlay')) {
-      e.target.classList.add('hidden');
-    }
-  });
-}
-
-function checkSession() {
-  const session = getSession();
-  if (session) {
-    populateDashboard(session);
-    showView('dashboard');
-  } else {
-    showView('register');
-  }
-}
-
-// ── UTILS ──
-const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
-const getEvents = () => JSON.parse(localStorage.getItem(EVENTS_KEY)) || [];
-const saveEvents = (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY)) || JSON.parse(localStorage.getItem(SESSION_KEY));
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 function hashPassword(pw) {
   let hash = 0;
@@ -240,7 +47,89 @@ function hashPassword(pw) {
   return `h_${hash.toString(36)}_${pw.length}`;
 }
 
-// ── FIELD STATES ──
+function seedEvents() {
+  if (getEvents().length > 0) return;
+  saveEvents([
+    {
+      id: 'd1',
+      titulo: 'Workshop React',
+      desc: 'Aprenda as bases do React e Hooks modernos num workshop pratico.',
+      data: '2026-06-15T10:00',
+      local: 'Online',
+      formato: 'online',
+      capac: 50,
+      estado: 'publicado',
+      orgName: 'Admin EventHub',
+      organizer: 'admin',
+      imgPreview: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&q=80',
+      sessions: [
+        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Boas-vindas e apresentacao dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'online', local: 'Zoom Room 1', capacidade: 50 },
+        { id: 's2', titulo: 'Hooks Avancados', desc: 'Exploracao de useMemo, useCallback e hooks customizados.', inicio: '11:15', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', capacidade: 50 }
+      ]
+    },
+    {
+      id: 'd2',
+      titulo: 'Conferencia UX 2026',
+      desc: 'Tendencias de design para o proximo ano com palestras e paineis.',
+      data: '2026-06-22T09:30',
+      local: 'Auditorio Lisboa',
+      formato: 'presencial',
+      capac: 120,
+      estado: 'publicado',
+      orgName: 'Admin EventHub',
+      organizer: 'admin',
+      imgPreview: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1200&q=80',
+      sessions: []
+    }
+  ]);
+}
+
+function showView(viewId, params = {}) {
+  Object.values(views).forEach((v) => v?.classList.add('hidden'));
+  views[viewId]?.classList.remove('hidden');
+
+  document.querySelectorAll('.modal-overlay').forEach((m) => m.classList.add('hidden'));
+  document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.target === viewId));
+  window.scrollTo(0, 0);
+
+  if (viewId === 'dashboard') populateDashboard(getSession());
+  if (viewId === 'listEvents') populateEventsGrid();
+  if (viewId === 'details') renderEventDetails(params.id);
+  if (viewId === 'profile') renderRegistrationHistory('profile-registration-history');
+}
+
+function initRouting() {
+  document.getElementById('goLogin')?.addEventListener('click', (e) => { e.preventDefault(); showView('login'); });
+  document.getElementById('goRegister')?.addEventListener('click', (e) => { e.preventDefault(); showView('register'); });
+  document.getElementById('reg-goLogin')?.addEventListener('click', () => showView('login'));
+
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-target]');
+    if (!target) return;
+    e.preventDefault();
+    showView(target.dataset.target);
+  });
+
+  document.getElementById('btn-nav-create')?.addEventListener('click', () => showView('createEvent'));
+  document.getElementById('btn-nav-create-le')?.addEventListener('click', () => showView('createEvent'));
+  document.getElementById('btn-cancel-create')?.addEventListener('click', () => showView('dashboard'));
+  document.getElementById('btn-back-from-details')?.addEventListener('click', () => showView('listEvents'));
+  document.getElementById('logoutBtnTop')?.addEventListener('click', logout);
+  document.getElementById('ce-go-dash')?.addEventListener('click', () => {
+    document.getElementById('createEventForm').classList.remove('hidden');
+    document.getElementById('ce-success').classList.add('hidden');
+    tempSessions = [];
+    renderTempSessions();
+    showView('dashboard');
+  });
+}
+
+function checkSession() {
+  const session = getSession();
+  if (session) showView('dashboard');
+  else showView('register');
+}
+
 function setFieldError(id, msg) {
   const grp = document.getElementById(`grp-${id}`);
   const err = document.getElementById(`err-${id}`);
@@ -264,264 +153,205 @@ function clearField(id) {
   if (err) err.textContent = '';
 }
 
-// ── VALIDATION ──
 function initValidation() {
-  regNome.addEventListener('blur', valRegNome);
-  regEmail.addEventListener('blur', valRegEmail);
-  regPw.addEventListener('input', valRegPw);
-  regCpw.addEventListener('input', valRegCpw);
-
-  [regNome, regEmail, loginEmail, loginPw].forEach(el => {
-    el.addEventListener('input', () => {
-      const id = el.id.replace('login-', 'login-').replace('reg-', 'reg-');
-      clearField(id);
-      if (id.startsWith('login')) loginAlert.classList.add('hidden');
-    });
+  document.querySelectorAll('input, textarea, select').forEach((el) => {
+    el.addEventListener('input', () => clearField(el.id));
   });
-
-  ceForm.querySelectorAll('input, textarea, select').forEach(el => {
-    el.addEventListener('input', () => {
-      clearField(el.id);
-      if (el.id === 'ce-local') updateCreateMapPreview();
-    });
-  });
-}
-
-function updateCreateMapPreview() {
-  const local = document.getElementById('ce-local').value.trim();
-  const preview = document.getElementById('ce-map-preview');
-  if (local && local.length > 3) {
-    preview.src = `https://maps.google.com/maps?q=${encodeURIComponent(local)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
-  } else {
-    preview.src = 'about:blank';
-  }
 }
 
 function valRegNome() {
-  const val = regNome.value.trim();
-  if (!val) return setFieldError('reg-nome', 'Nome obrigatório.');
+  const val = document.getElementById('reg-nome').value.trim();
+  if (!val) return setFieldError('reg-nome', 'Nome obrigatorio.');
   if (val.length < 3 || !val.includes(' ')) return setFieldError('reg-nome', 'Introduza nome e apelido.');
   return setFieldValid('reg-nome');
 }
 
 function valRegEmail() {
-  const val = regEmail.value.trim().toLowerCase();
-  if (!val) return setFieldError('reg-email', 'Email obrigatório.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) return setFieldError('reg-email', 'Formato inválido.');
-  if (getUsers().some(u => u.email === val)) return setFieldError('reg-email', 'Email já registado.');
+  const val = document.getElementById('reg-email').value.trim().toLowerCase();
+  if (!val) return setFieldError('reg-email', 'Email obrigatorio.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) return setFieldError('reg-email', 'Formato invalido.');
+  if (getUsers().some((u) => u.email === val)) return setFieldError('reg-email', 'Email ja registado.');
   return setFieldValid('reg-email');
 }
 
 function valRegPw() {
-  const val = regPw.value;
-  const hasLen = val.length >= 8;
-  const hasLet = /[a-zA-Z]/.test(val);
-  const hasNum = /\d/.test(val);
-
-  document.getElementById('req-len').classList.toggle('ok', hasLen);
-  document.getElementById('req-letter').classList.toggle('ok', hasLet);
-  document.getElementById('req-number').classList.toggle('ok', hasNum);
-
-  let score = 0;
-  if (hasLen) score++; if (hasLet) score++; if (hasNum) score++;
-  if (val.length >= 12 && /[^a-zA-Z0-9]/.test(val)) score++;
-
-  const levels = [
-    { cls: '', lbl: '' }, { cls: 's1', lbl: 'Fraca', col: '#f43f5e' },
-    { cls: 's2', lbl: 'Média', col: '#f59e0b' }, { cls: 's3', lbl: 'Boa', col: '#84cc16' },
-    { cls: 's4', lbl: 'Forte', col: '#22c55e' }
-  ];
-  const lvl = levels[Math.min(score, 4)];
-  regSF.className = `strength-fill ${lvl.cls}`;
-  regSL.textContent = lvl.lbl;
-  regSL.style.color = lvl.col || '';
-
-  if (!hasLen || !hasLet || !hasNum) return setFieldError('reg-pw', '');
+  const val = document.getElementById('reg-pw').value;
+  if (val.length < 8 || !/[a-zA-Z]/.test(val) || !/\d/.test(val)) return setFieldError('reg-pw', 'Minimo 8 caracteres, uma letra e um numero.');
   return setFieldValid('reg-pw');
 }
 
 function valRegCpw() {
-  if (!regCpw.value) return setFieldError('reg-cpw', 'Confirmação obrigatória.');
-  if (regCpw.value !== regPw.value) return setFieldError('reg-cpw', 'As passwords não coincidem.');
+  const cpw = document.getElementById('reg-cpw').value;
+  const pw = document.getElementById('reg-pw').value;
+  if (!cpw) return setFieldError('reg-cpw', 'Confirmacao obrigatoria.');
+  if (cpw !== pw) return setFieldError('reg-cpw', 'As passwords nao coincidem.');
   return setFieldValid('reg-cpw');
 }
 
-// ── REGISTO SUBMIT ──
-regForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  if (!valRegNome() || !valRegEmail() || !valRegPw() || !valRegCpw()) return;
+function initAuth() {
+  document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!valRegNome() || !valRegEmail() || !valRegPw() || !valRegCpw()) return;
 
-  regBtn.disabled = true;
-  regBtn.querySelector('.btn-text').classList.add('hidden');
-  regBtn.querySelector('.btn-spinner').classList.remove('hidden');
+    const newUser = {
+      id: Date.now().toString(36),
+      nome: document.getElementById('reg-nome').value.trim(),
+      email: document.getElementById('reg-email').value.trim().toLowerCase(),
+      pw: hashPassword(document.getElementById('reg-pw').value),
+      created: new Date().toISOString()
+    };
+    await delay(350);
+    saveUsers([...getUsers(), newUser]);
+    document.getElementById('reg-confirmedEmail').textContent = newUser.email;
+    document.getElementById('reg-form').classList.add('hidden');
+    document.getElementById('reg-success').classList.remove('hidden');
+  });
 
-  await delay(1000);
+  document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const pw = document.getElementById('login-pw').value;
+    const loginAlert = document.getElementById('loginAlert');
+    const loginAlertM = document.getElementById('loginAlertMsg');
 
-  const newUser = {
-    id: Date.now().toString(36),
-    nome: regNome.value.trim(),
-    email: regEmail.value.trim().toLowerCase(),
-    pw: hashPassword(regPw.value),
-    created: new Date().toISOString()
-  };
+    if (!email) return setFieldError('login-email', 'Obrigatorio.');
+    if (!pw) return setFieldError('login-pw', 'Obrigatorio.');
 
-  const users = getUsers();
-  users.push(newUser);
-  saveUsers(users);
+    await delay(350);
+    const user = getUsers().find((u) => u.email === email && u.pw === hashPassword(pw));
+    if (!user) {
+      loginAlert.classList.remove('hidden');
+      loginAlertM.textContent = 'Credenciais invalidas. Tente novamente.';
+      return;
+    }
 
-  document.getElementById('reg-confirmedEmail').textContent = newUser.email;
-  document.getElementById('reg-confirmedName').textContent = newUser.nome.split(' ')[0];
-  document.getElementById('reg-form').classList.add('hidden');
-  document.getElementById('reg-success').classList.remove('hidden');
-});
+    const session = { userId: user.id, nome: user.nome, email: user.email, loginAt: new Date().toISOString(), persistent: document.getElementById('rememberMe').checked };
+    if (session.persistent) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    e.target.reset();
+    const pendingRegistration = sessionStorage.getItem('eventhub_pending_registration');
+    if (pendingRegistration) {
+      sessionStorage.removeItem('eventhub_pending_registration');
+      showView('details', { id: pendingRegistration });
+      return;
+    }
+    showView('dashboard');
+  });
+}
 
-// ── LOGIN SUBMIT ──
-loginForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const email = loginEmail.value.trim().toLowerCase();
-  const pw = loginPw.value;
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+  showView('login');
+}
 
-  if (!email) return setFieldError('login-email', 'Obrigatório.');
-  if (!pw) return setFieldError('login-pw', 'Obrigatório.');
-
-  loginBtn.disabled = true;
-  loginBtn.querySelector('.btn-text').classList.add('hidden');
-  loginBtn.querySelector('.btn-spinner').classList.remove('hidden');
-
-  await delay(1000);
-
-  const user = getUsers().find(u => u.email === email && u.pw === hashPassword(pw));
-
-  if (!user) {
-    loginBtn.disabled = false;
-    loginBtn.querySelector('.btn-text').classList.remove('hidden');
-    loginBtn.querySelector('.btn-spinner').classList.add('hidden');
-    loginAlert.classList.remove('hidden');
-    loginAlertM.textContent = 'Credenciais inválidas. Tente novamente.';
-    return;
-  }
-
-  const session = {
-    userId: user.id,
-    nome: user.nome,
-    email: user.email,
-    loginAt: new Date().toISOString(),
-    persistent: rememberMe.checked
-  };
-
-  if (rememberMe.checked) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  else sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-  populateDashboard(session);
-  showView('dashboard');
-
-  loginBtn.disabled = false;
-  loginBtn.querySelector('.btn-text').classList.remove('hidden');
-  loginBtn.querySelector('.btn-spinner').classList.add('hidden');
-  loginForm.reset();
-});
-
-// ── DASHBOARD & POPULATION ──
 function populateDashboard(s) {
   if (!s) return;
   const firstName = s.nome.split(' ')[0];
-  const initials = s.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-
-  const syncSB = (idPrefix) => {
-    const n = document.getElementById(`sb-name-${idPrefix}`);
-    const e = document.getElementById(`sb-email-${idPrefix}`);
-    const a = document.getElementById(`sb-avatar-${idPrefix}`);
-    if (n) n.textContent = s.nome;
-    if (e) e.textContent = s.email;
-    if (a) a.textContent = initials;
-  };
-
-  if (dashName) dashName.textContent = firstName;
-  if (sbName) sbName.textContent = s.nome;
-  if (sbEmail) sbEmail.textContent = s.email;
-  if (sbAvatar) sbAvatar.textContent = initials;
-  if (sessUser) sessUser.textContent = s.nome;
-  if (sessEmail) sessEmail.textContent = s.email;
-  if (sessAt) sessAt.textContent = new Date(s.loginAt).toLocaleString('pt-PT');
-  if (sessType) sessType.textContent = s.persistent ? 'Persistente (Lembrar-me)' : 'Temporária (Tab)';
-
-  syncSB('ce'); syncSB('le');
-
+  const initials = s.nome.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  document.getElementById('dash-name').textContent = firstName;
+  document.getElementById('sb-name').textContent = s.nome;
+  document.getElementById('sb-email').textContent = s.email;
+  document.getElementById('sb-avatar').textContent = initials;
   updateStats();
-  populateEventsTable();
-
-  const hour = new Date().getHours();
-  let greet = 'Bom dia';
-  if (hour >= 12) greet = 'Boa tarde';
-  if (hour >= 19) greet = 'Boa noite';
-  document.querySelector('.dash-title').innerHTML = `${greet}, <span id="dash-name">${firstName}</span>! 👋`;
+  renderRegistrationHistory('dashboard-registration-history');
 }
 
 function updateStats() {
-  const events = getEvents();
-  const dummy = [{}, {}]; // Simulate 2 dummy events
-  const total = events.length + dummy.length;
-  const upcoming = events.filter(e => new Date(e.data) > new Date()).length + dummy.length;
-
-  const elCount = document.getElementById('stat-events-count');
-  const elBadge = document.getElementById('stat-events-badge');
-  const elUpcoming = document.getElementById('stat-upcoming-count');
-  const elPart = document.getElementById('stat-part-count');
-
-  if (elCount) elCount.textContent = total;
-  if (elBadge) elBadge.textContent = `+${events.length} este mês`;
-  if (elUpcoming) elUpcoming.textContent = upcoming;
-  if (elPart) elPart.textContent = (total * 25) + 12; // Just for visuals
+  const session = getSession();
+  const activeRegistrations = getRegistrations().filter((r) => r.userId === session?.userId && r.status === 'confirmada');
+  document.getElementById('stat-events-count').textContent = getEvents().length;
+  document.getElementById('stat-registrations-count').textContent = activeRegistrations.length;
 }
 
-function populateEventsTable() {
-  const tbody = document.getElementById('events-table-body');
-  if (!tbody) return;
-  const events = getEvents();
-  const dummy = [
-    { titulo: 'Workshop React', data: '2026-05-15T10:00', capac: 42, estado: 'publicado' },
-    { titulo: 'Conferência UX', data: '2026-05-22T09:30', capac: 130, estado: 'publicado' }
-  ];
-  const all = [...dummy, ...events].slice(-6).reverse();
-  tbody.innerHTML = all.map(ev => {
-    const d = new Date(ev.data);
-    const dateStr = d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-    const isPast = d < new Date();
-    const statusCls = ev.estado === 'rascunho' ? 'pending' : (isPast ? 'done' : 'active');
-    const statusLbl = ev.estado === 'rascunho' ? 'Rascunho' : (isPast ? 'Concluído' : 'Ativo');
-    return `<tr><td><strong>${ev.titulo}</strong></td><td>${dateStr}</td><td>${ev.capac || 0}</td><td><span class="badge badge--${statusCls}">${statusLbl}</span></td></tr>`;
-  }).join('');
+function initEventLogic() {
+  document.getElementById('createEventForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const titulo = document.getElementById('ce-titulo').value.trim();
+    const desc = document.getElementById('ce-desc').value.trim();
+    const data = document.getElementById('ce-data').value;
+    const local = document.getElementById('ce-local').value.trim();
+    const link = document.getElementById('ce-link').value.trim();
+    const formato = document.getElementById('ce-formato').value;
+    const capac = parseInt(document.getElementById('ce-capacidade').value, 10);
+    const estado = document.querySelector('input[name="ce-estado"]:checked').value;
+
+    let valid = true;
+    if (!titulo) valid = setFieldError('ce-titulo', 'Obrigatorio.');
+    if (!desc) valid = setFieldError('ce-desc', 'Obrigatorio.');
+    if (!data) valid = setFieldError('ce-data', 'Obrigatorio.');
+    else if (new Date(data) < new Date()) valid = setFieldError('ce-data', 'Data deve ser futura.');
+    if (!local) valid = setFieldError('ce-local', 'Obrigatorio.');
+    if (link && !/^https?:\/\//i.test(link)) valid = setFieldError('ce-link', 'URL invalido.');
+    if (!capac || capac < 1) valid = setFieldError('ce-capacidade', 'Invalido.');
+    if (!valid) return;
+
+    await delay(350);
+    const session = getSession();
+    const eventId = Math.random().toString(36).slice(2, 8);
+    const newEvent = {
+      id: eventId,
+      titulo,
+      desc,
+      data,
+      local,
+      link,
+      formato,
+      capac,
+      estado,
+      sessions: tempSessions,
+      imgPreview: null,
+      url: `https://eventhub.com/e/${eventId}`,
+      organizer: session.userId,
+      orgName: session.nome,
+      createdAt: new Date().toISOString()
+    };
+    saveEvents([...getEvents(), newEvent]);
+
+    document.getElementById('ce-event-url').textContent = newEvent.url;
+    document.getElementById('createEventForm').classList.add('hidden');
+    document.getElementById('ce-success').classList.remove('hidden');
+    e.target.reset();
+    tempSessions = [];
+    renderTempSessions();
+  });
+
+  document.getElementById('btn-register-event')?.addEventListener('click', handleEventRegistration);
+  document.getElementById('btn-cancel-registration')?.addEventListener('click', handleCancelRegistration);
+  document.getElementById('stats-period-filter')?.addEventListener('change', () => {
+    const eventId = document.getElementById('ed-hero').dataset.eventId;
+    const ev = getEvents().find((item) => item.id === eventId);
+    if (ev) renderEventStats(ev);
+  });
+  document.getElementById('stats-type-filter')?.addEventListener('change', () => {
+    const eventId = document.getElementById('ed-hero').dataset.eventId;
+    const ev = getEvents().find((item) => item.id === eventId);
+    if (ev) renderEventStats(ev);
+  });
+  document.getElementById('btn-export-stats-pdf')?.addEventListener('click', exportEventStatsPdf);
+  document.getElementById('btn-export-stats-excel')?.addEventListener('click', exportEventStatsExcel);
 }
 
 function populateEventsGrid() {
   const grid = document.getElementById('events-grid');
-  if (!grid) return;
   const events = getEvents();
-  const dummy = [
-    { id: 'd1', titulo: 'Workshop React', desc: 'Aprenda as bases do React e Hooks modernos.', data: '2026-05-15T10:00', local: 'Online', formato: 'online', capac: 50, estado: 'publicado' },
-    { id: 'd2', titulo: 'Conferência UX 2026', desc: 'As tendências de design para o próximo ano.', data: '2026-05-22T09:30', local: 'Lisboa', formato: 'presencial', capac: 200, estado: 'publicado' }
-  ];
-  const all = [...dummy, ...events];
-  grid.innerHTML = all.map(ev => {
+  grid.innerHTML = events.map((ev) => {
     const d = new Date(ev.data);
-    const dateStr = d.toLocaleString('pt-PT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const isPast = d < new Date();
-    const statusCls = ev.estado === 'rascunho' ? 'pending' : (isPast ? 'done' : 'active');
-    const statusLbl = ev.estado === 'rascunho' ? 'Rascunho' : (isPast ? 'Concluído' : 'Ativo');
-    const imgUrl = ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500&q=80';
-
+    const status = getEventStatus(ev);
+    const available = getAvailableSeats(ev);
     return `
-      <article class="event-card fade-up" onclick="app.visitEvent('${ev.id}')">
+      <article class="event-card" onclick="app.visitEvent('${ev.id}')">
         <div class="card-img">
-          <img src="${imgUrl}" alt="${ev.titulo}">
-          <div class="card-status"><span class="badge badge--${statusCls}">${statusLbl}</span></div>
+          <img src="${ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=900&q=80'}" alt="${escapeHtml(ev.titulo)}">
+          <div class="card-status"><span class="badge badge--${status.cls}">${status.label}</span></div>
         </div>
         <div class="card-body">
-          <h3>${ev.titulo}</h3>
-          <p>${ev.desc}</p>
+          <h3>${escapeHtml(ev.titulo)}</h3>
+          <p>${escapeHtml(ev.desc)}</p>
           <div class="card-meta">
-            <div class="meta-item">📅 ${dateStr}</div>
-            <div class="meta-item">📍 ${ev.local}</div>
+            <span>📅 ${d.toLocaleString('pt-PT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            <span>📍 ${escapeHtml(ev.local)}</span>
+            <span>👥 ${available} vagas disponiveis</span>
           </div>
         </div>
       </article>
@@ -530,154 +360,550 @@ function populateEventsGrid() {
 }
 
 function renderEventDetails(id) {
-  const events = getEvents();
-  const dummy = [
-    { id: 'd1', titulo: 'Workshop React', desc: 'Aprenda as bases do React e Hooks modernos. Neste workshop prático, vamos construir uma aplicação do zero usando as melhores práticas da indústria.', data: '2026-05-15T10:00', local: 'Online', formato: 'online', capac: 50, estado: 'publicado', orgName: 'Admin EventHub' },
-    { id: 'd2', titulo: 'Conferência UX 2026', desc: 'As tendências de design para o próximo ano. Palestras com designers seniores de empresas como Google, Meta e Spotify.', data: '2026-05-22T09:30', local: 'Auditório Lisboa', formato: 'presencial', capac: 200, estado: 'publicado', orgName: 'Admin EventHub' }
-  ];
-
-  let ev = [...dummy, ...events].find(e => e.id === id);
+  const ev = getEvents().find((e) => e.id === id);
   if (!ev) { showView('listEvents'); return; }
 
-  // Populate UI
+  const status = getEventStatus(ev);
+  const hero = document.getElementById('ed-hero');
+  hero.dataset.eventId = id;
+  hero.style.backgroundImage = `url("${ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&q=80'}")`;
+
   document.getElementById('ed-titulo').textContent = ev.titulo;
   document.getElementById('ed-desc').textContent = ev.desc;
-  document.getElementById('ed-data').textContent = new Date(ev.data).toLocaleString('pt-PT');
-  
-  // Local & Map logic
-  const localEl = document.getElementById('ed-local');
-  const localFullEl = document.getElementById('ed-local-full');
-  const localContainer = document.getElementById('ed-local-container');
-  const mapSection = document.getElementById('ed-map-section');
-  const mapFrame = document.getElementById('ed-map-frame');
-
-  if (ev.local) {
-    localEl.textContent = ev.local;
-    localFullEl.textContent = ev.local;
-    localContainer.classList.remove('hidden');
-    mapSection.classList.remove('hidden');
-    
-    // Encode address for Google Maps embed (reliable no-key method)
-    const encodedAddress = encodeURIComponent(ev.local);
-    mapFrame.src = `https://maps.google.com/maps?q=${encodedAddress}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
-  } else {
-    localContainer.classList.add('hidden');
-    mapSection.classList.add('hidden');
-  }
-
-  // Link logic
-  const linkEl = document.getElementById('ed-link');
-  const linkUrlEl = document.getElementById('ed-link-url');
-  const linkContainer = document.getElementById('ed-link-container');
-  const linkSection = document.getElementById('ed-link-section');
-
-  if (ev.link) {
-    linkEl.href = ev.link;
-    linkUrlEl.href = ev.link;
-    linkUrlEl.textContent = ev.link;
-    linkContainer.classList.remove('hidden');
-    linkSection.classList.remove('hidden');
-  } else {
-    linkContainer.classList.add('hidden');
-    linkSection.classList.add('hidden');
-  }
-
+  document.getElementById('ed-data').textContent = `📅 ${new Date(ev.data).toLocaleString('pt-PT')}`;
+  document.getElementById('ed-local').textContent = `📍 ${ev.local}`;
   document.getElementById('ed-capac').textContent = ev.capac;
+  document.getElementById('ed-vagas').textContent = getAvailableSeats(ev);
+  document.getElementById('ed-status').className = `badge badge--${status.cls}`;
+  document.getElementById('ed-status').textContent = status.label;
 
-  const status = document.getElementById('ed-status');
-  const isPast = new Date(ev.data) < new Date();
-  status.className = `badge badge--${isPast ? 'done' : 'active'}`;
-  status.textContent = isPast ? 'Concluído' : 'Publicado';
-
-  const hero = document.getElementById('ed-hero');
-  const img = ev.imgPreview || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&q=80';
-  hero.style.backgroundImage = `url("${img}")`;
-  hero.dataset.eventId = id;
-
-  // Organizer info
-  const orgName = ev.orgName || (getSession().nome);
+  const orgName = ev.orgName || 'EventHub';
   document.getElementById('ed-org-name').textContent = orgName;
-  document.getElementById('ed-org-avatar').textContent = orgName.split(' ').map(n => n[0]).join('');
+  document.getElementById('ed-org-avatar').textContent = orgName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  document.getElementById('ed-add-session-inline').classList.toggle('hidden', ev.organizer !== getSession()?.userId);
+  document.getElementById('ed-add-session-inline').onclick = () => openSessionModal(ev.id);
 
-  // Agenda / Sessions
   renderAgenda(ev);
+  renderRegistrationState(ev);
+  renderEventStats(ev);
 }
 
 function renderAgenda(event) {
   const list = document.getElementById('ed-sessions-list');
-  const addBtn = document.getElementById('ed-add-session-inline');
-  const session = getSession();
-  const isOrganizer = event.organizer === session?.userId;
-
-  if (isOrganizer) addBtn.classList.remove('hidden');
-  else addBtn.classList.add('hidden');
-
+  renderOrganizerFeedback(event);
   if (!event.sessions || event.sessions.length === 0) {
-    list.innerHTML = '<p class="empty-msg">Nenhuma sessão programada.</p>';
+    list.innerHTML = '<p class="empty-msg">Nenhuma sessao programada.</p>';
     return;
   }
 
-  // Sort sessions by start time
-  const sorted = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-  list.innerHTML = sorted.map(s => `
+  list.innerHTML = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio)).map((s) => {
+    const stats = getSessionFeedbackStats(event.id, s.id);
+    const feedbackBlock = renderSessionFeedbackBlock(event, s, stats);
+    return `
     <div class="session-item">
-      <div class="session-time">
-        <span class="time-start">${s.inicio}</span>
-        <span class="time-sep">-</span>
-        <span class="time-end">${s.fim}</span>
-      </div>
+      <div class="session-time">${s.inicio}<br>${s.fim}</div>
       <div class="session-info">
-        <h4>${s.titulo}</h4>
-        <p>${s.desc}</p>
-        
-        ${s.speakerIds && s.speakerIds.length > 0 ? `
-          <div class="session-speakers">
-            ${s.speakerIds.map(sid => {
-              const spk = getSpeakers().find(x => x.id === sid);
-              if (!spk) return '';
-              const photo = spk.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80';
-              return `
-                <div class="speaker-badge" onclick="app.viewSpeaker('${spk.id}')" title="Ver perfil de ${spk.nome}">
-                  <img src="${photo}" class="avatar-xs" alt="">
-                  <span>${spk.nome}</span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        ` : ''}
-
-        <div class="session-meta">
-          <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
-          <span>👥 Máx: ${s.capacidade}</span>
+        <h4>${escapeHtml(s.titulo)}</h4>
+        <p>${escapeHtml(s.desc)}</p>
+        <div class="session-meta"><span>${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</span><span>👥 Max: ${s.capacidade}</span></div>
+        <div class="session-feedback-summary">
+          <strong>${stats.average ? `${stats.average.toFixed(1)} / 5` : 'Sem classificacoes'}</strong>
+          <span>${renderStars(stats.average || 0)} ${stats.count} feedback${stats.count === 1 ? '' : 's'}</span>
         </div>
+        ${feedbackBlock}
       </div>
-      ${isOrganizer ? `
-        <div class="session-actions">
-          <button class="btn-icon" onclick="app.editSession('${event.id}', '${s.id}')" title="Editar">✏️</button>
-          <button class="btn-icon btn-icon--danger" onclick="app.deleteSession('${event.id}', '${s.id}')" title="Eliminar">🗑️</button>
-        </div>
-      ` : ''}
+    </div>
+  `;
+  }).join('');
+}
+
+function renderSessionFeedbackBlock(event, session, stats) {
+  const activeRegistration = findUserRegistration(event.id);
+  const userFeedback = findUserFeedback(event.id, session.id);
+  const canEdit = userFeedback ? isFeedbackEditable(userFeedback) : true;
+  const userRating = userFeedback?.rating || 0;
+  const userComment = userFeedback?.comment || '';
+  const message = !activeRegistration
+    ? '<p class="feedback-lock">Inscreva-se no evento para deixar feedback sobre esta sessao.</p>'
+    : (!canEdit ? '<p class="feedback-lock">O periodo de edicao de 24h terminou. O seu feedback fica guardado.</p>' : '');
+
+  const form = activeRegistration && canEdit ? `
+    <form class="feedback-form" onsubmit="app.submitSessionFeedback(event, '${event.id}', '${session.id}')">
+      <div class="star-input" aria-label="Classificacao por estrelas">
+        ${[5, 4, 3, 2, 1].map((value) => `
+          <input type="radio" id="fb-${session.id}-${value}" name="rating-${session.id}" value="${value}" ${userRating === value ? 'checked' : ''} required>
+          <label for="fb-${session.id}-${value}" title="${value} estrelas">★</label>
+        `).join('')}
+      </div>
+      <textarea name="comment" maxlength="500" rows="3" placeholder="Comentario opcional (max. 500 caracteres)">${escapeHtml(userComment)}</textarea>
+      <div class="feedback-actions">
+        <span>${userFeedback ? 'Pode editar durante 24h apos enviar.' : 'O comentario fica listado como moderado.'}</span>
+        <button class="btn btn-secondary" type="submit">${userFeedback ? 'Atualizar feedback' : 'Enviar feedback'}</button>
+      </div>
+    </form>
+  ` : '';
+
+  return `
+    <div class="session-feedback">
+      <div class="feedback-header">
+        <h5>Feedback da sessao</h5>
+        <span>Media: ${stats.average ? stats.average.toFixed(1) : '--'} (${stats.count})</span>
+      </div>
+      ${message}
+      ${form}
+      ${renderModeratedComments(event.id, session.id)}
+    </div>
+  `;
+}
+
+function renderStars(value) {
+  const rounded = Math.round(value);
+  return Array.from({ length: 5 }, (_, i) => i < rounded ? '★' : '☆').join('');
+}
+
+function getSessionFeedback(eventId, sessionId) {
+  return getFeedback().filter((item) => item.eventId === eventId && item.sessionId === sessionId && item.status === 'moderado');
+}
+
+function getSessionFeedbackStats(eventId, sessionId) {
+  const items = getSessionFeedback(eventId, sessionId);
+  const total = items.reduce((sum, item) => sum + Number(item.rating || 0), 0);
+  return {
+    average: items.length ? total / items.length : 0,
+    count: items.length
+  };
+}
+
+function findUserFeedback(eventId, sessionId) {
+  const session = getSession();
+  if (!session) return null;
+  return getFeedback().find((item) => item.eventId === eventId && item.sessionId === sessionId && item.userId === session.userId) || null;
+}
+
+function isFeedbackEditable(feedback) {
+  const changedAt = new Date(feedback.updatedAt || feedback.createdAt).getTime();
+  return Date.now() - changedAt <= 24 * 60 * 60 * 1000;
+}
+
+function renderModeratedComments(eventId, sessionId) {
+  const comments = getSessionFeedback(eventId, sessionId)
+    .filter((item) => item.comment)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+  if (comments.length === 0) return '<p class="feedback-empty">Ainda nao existem comentarios moderados.</p>';
+
+  return `
+    <div class="feedback-comments">
+      ${comments.map((item) => `
+        <article class="feedback-comment">
+          <div><strong>${escapeHtml(item.userName)}</strong><span>${renderStars(item.rating)} ${item.rating}/5</span></div>
+          <p>${escapeHtml(item.comment)}</p>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function handleSessionFeedbackSubmit(e, eventId, sessionId) {
+  e.preventDefault();
+  const ev = getEvents().find((event) => event.id === eventId);
+  const session = getSession();
+  const registration = findUserRegistration(eventId);
+  if (!ev || !session || !registration) {
+    alert('Apenas participantes inscritos podem deixar feedback.');
+    return;
+  }
+
+  const form = e.target;
+  const rating = Number(new FormData(form).get(`rating-${sessionId}`));
+  const comment = String(new FormData(form).get('comment') || '').trim();
+  if (rating < 1 || rating > 5) {
+    alert('Escolha uma classificacao entre 1 e 5 estrelas.');
+    return;
+  }
+  if (comment.length > 500) {
+    alert('O comentario deve ter no maximo 500 caracteres.');
+    return;
+  }
+
+  const feedback = getFeedback();
+  const existing = feedback.find((item) => item.eventId === eventId && item.sessionId === sessionId && item.userId === session.userId);
+  if (existing && !isFeedbackEditable(existing)) {
+    alert('O periodo de edicao de 24h terminou.');
+    renderAgenda(ev);
+    return;
+  }
+
+  const sessionInfo = ev.sessions.find((item) => item.id === sessionId);
+  const now = new Date().toISOString();
+  const entry = {
+    id: existing?.id || Math.random().toString(36).slice(2, 9),
+    eventId,
+    eventTitle: ev.titulo,
+    sessionId,
+    sessionTitle: sessionInfo?.titulo || 'Sessao',
+    organizerId: ev.organizer,
+    userId: session.userId,
+    userName: session.nome,
+    userEmail: session.email,
+    rating,
+    comment,
+    status: 'moderado',
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+    organizerNotifiedAt: now
+  };
+
+  const next = existing ? feedback.map((item) => item.id === existing.id ? entry : item) : [...feedback, entry];
+  saveFeedback(next);
+  alert(`Feedback enviado. O organizador recebeu uma notificacao sobre "${entry.sessionTitle}".`);
+  renderAgenda(ev);
+  renderEventStats(ev);
+}
+
+function renderOrganizerFeedback(event) {
+  const card = document.getElementById('organizer-feedback-card');
+  const list = document.getElementById('organizer-feedback-list');
+  const session = getSession();
+  if (!card || !list) return;
+
+  const isOrganizer = event.organizer === session?.userId;
+  card.classList.toggle('hidden', !isOrganizer);
+  if (!isOrganizer) return;
+
+  const notifications = getFeedback()
+    .filter((item) => item.eventId === event.id)
+    .sort((a, b) => new Date(b.organizerNotifiedAt) - new Date(a.organizerNotifiedAt));
+
+  if (notifications.length === 0) {
+    list.innerHTML = '<p class="empty-msg">Ainda nao recebeu feedback.</p>';
+    return;
+  }
+
+  list.innerHTML = notifications.map((item) => `
+    <div class="organizer-feedback-item">
+      <strong>${escapeHtml(item.sessionTitle)}</strong>
+      <span>${renderStars(item.rating)} ${item.rating}/5 por ${escapeHtml(item.userName)}</span>
+      <small>Notificado em ${new Date(item.organizerNotifiedAt).toLocaleString('pt-PT')}</small>
     </div>
   `).join('');
 }
 
+function renderEventStats(event) {
+  const section = document.getElementById('event-stats-section');
+  const session = getSession();
+  if (!section) return;
+
+  const isOrganizer = event.organizer === session?.userId;
+  section.classList.toggle('hidden', !isOrganizer);
+  if (!isOrganizer) return;
+
+  const stats = buildEventStats(event);
+  const grid = document.getElementById('event-stats-grid');
+  grid.innerHTML = `
+    <div class="stats-kpi"><span>Total inscritos</span><strong>${stats.totalConfirmed}</strong><small>${stats.totalCancelled} cancelada${stats.totalCancelled === 1 ? '' : 's'}</small></div>
+    <div class="stats-kpi"><span>Taxa presenca</span><strong>${stats.attendanceRate}%</strong><small>confirmadas / total</small></div>
+    <div class="stats-kpi"><span>Feedback medio</span><strong>${stats.avgRating ? stats.avgRating.toFixed(1) : '--'}</strong><small>${stats.feedbackCount} resposta${stats.feedbackCount === 1 ? '' : 's'}</small></div>
+    <div class="stats-kpi"><span>Sessao popular</span><strong>${escapeHtml(stats.mostPopular?.titulo || '--')}</strong><small>${stats.mostPopular?.score || 0} interacoes</small></div>
+  `;
+
+  renderRegistrationTimeline(stats.timeline);
+  renderSessionComparison(stats.sessions);
+}
+
+function buildEventStats(event) {
+  const periodFilter = document.getElementById('stats-period-filter')?.value || 'all';
+  const typeFilter = document.getElementById('stats-type-filter')?.value || 'all';
+  const since = periodFilter === 'all' ? null : Date.now() - Number(periodFilter) * 24 * 60 * 60 * 1000;
+  const inPeriod = (iso) => !since || new Date(iso).getTime() >= since;
+
+  const eventRegs = getRegistrations().filter((reg) => reg.eventId === event.id && inPeriod(reg.createdAt));
+  const confirmed = eventRegs.filter((reg) => reg.status === 'confirmada');
+  const cancelled = eventRegs.filter((reg) => reg.status === 'cancelada');
+  const eventFeedback = getFeedback().filter((item) => item.eventId === event.id && inPeriod(item.updatedAt || item.createdAt));
+  const feedbackTotal = eventFeedback.reduce((sum, item) => sum + Number(item.rating || 0), 0);
+  const filteredSessions = (event.sessions || []).filter((sess) => typeFilter === 'all' || sess.tipo === typeFilter);
+  const sessions = filteredSessions.map((sess) => {
+    const sessionFeedback = eventFeedback.filter((item) => item.sessionId === sess.id);
+    const avgRating = sessionFeedback.length
+      ? sessionFeedback.reduce((sum, item) => sum + Number(item.rating || 0), 0) / sessionFeedback.length
+      : 0;
+    const estimatedParticipation = Math.min(confirmed.length, Number(sess.capacidade || confirmed.length || 0));
+    return {
+      id: sess.id,
+      titulo: sess.titulo,
+      tipo: sess.tipo,
+      participation: estimatedParticipation,
+      feedbackCount: sessionFeedback.length,
+      avgRating,
+      score: estimatedParticipation + sessionFeedback.length
+    };
+  });
+
+  const totalRegs = confirmed.length + cancelled.length;
+  return {
+    totalConfirmed: confirmed.length,
+    totalCancelled: cancelled.length,
+    attendanceRate: totalRegs ? Math.round((confirmed.length / totalRegs) * 100) : 0,
+    avgRating: eventFeedback.length ? feedbackTotal / eventFeedback.length : 0,
+    feedbackCount: eventFeedback.length,
+    mostPopular: [...sessions].sort((a, b) => b.score - a.score)[0],
+    timeline: buildRegistrationTimeline(confirmed),
+    sessions
+  };
+}
+
+function buildRegistrationTimeline(registrations) {
+  const buckets = new Map();
+  registrations.forEach((reg) => {
+    const key = new Date(reg.createdAt).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+    buckets.set(key, (buckets.get(key) || 0) + 1);
+  });
+  const entries = [...buckets.entries()];
+  if (entries.length > 0) return entries.map(([label, value]) => ({ label, value }));
+  return [{ label: 'Sem dados', value: 0 }];
+}
+
+function renderRegistrationTimeline(timeline) {
+  const container = document.getElementById('stats-registration-chart');
+  const max = Math.max(1, ...timeline.map((item) => item.value));
+  container.innerHTML = timeline.map((item) => {
+    const height = Math.max(8, Math.round((item.value / max) * 120));
+    return `
+      <div class="chart-column">
+        <div class="chart-bar" style="height:${height}px"></div>
+        <strong>${item.value}</strong>
+        <span>${escapeHtml(item.label)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSessionComparison(sessions) {
+  const container = document.getElementById('stats-session-comparison');
+  if (!sessions.length) {
+    container.innerHTML = '<p class="empty-msg">Nao existem sessoes para os filtros selecionados.</p>';
+    return;
+  }
+
+  const maxParticipation = Math.max(1, ...sessions.map((item) => item.participation));
+  container.innerHTML = sessions.map((item) => {
+    const participationWidth = Math.round((item.participation / maxParticipation) * 100);
+    const feedbackWidth = Math.round((item.avgRating / 5) * 100);
+    return `
+      <div class="comparison-row">
+        <div class="comparison-title"><strong>${escapeHtml(item.titulo)}</strong><span>${escapeHtml(item.tipo)}</span></div>
+        <div class="comparison-metric"><span>Participacao ${item.participation}</span><div><i style="width:${participationWidth}%"></i></div></div>
+        <div class="comparison-metric feedback"><span>Feedback ${item.avgRating ? item.avgRating.toFixed(1) : '--'} / 5</span><div><i style="width:${feedbackWidth}%"></i></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function exportEventStatsExcel() {
+  const eventId = document.getElementById('ed-hero').dataset.eventId;
+  const event = getEvents().find((item) => item.id === eventId);
+  if (!event) return;
+  if (event.organizer !== getSession()?.userId) {
+    alert('Apenas o organizador pode exportar estatisticas deste evento.');
+    return;
+  }
+
+  const stats = buildEventStats(event);
+  const rows = [
+    ['Evento', event.titulo],
+    ['Total inscritos', stats.totalConfirmed],
+    ['Taxa presenca', `${stats.attendanceRate}%`],
+    ['Feedback medio', stats.avgRating ? stats.avgRating.toFixed(2) : ''],
+    [],
+    ['Sessao', 'Tipo', 'Participacao', 'Feedback medio', 'Total feedback'],
+    ...stats.sessions.map((item) => [
+      item.titulo,
+      item.tipo,
+      item.participation,
+      item.avgRating ? item.avgRating.toFixed(2) : '',
+      item.feedbackCount
+    ])
+  ];
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `eventhub-estatisticas-${event.id}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function exportEventStatsPdf() {
+  const eventId = document.getElementById('ed-hero').dataset.eventId;
+  const event = getEvents().find((item) => item.id === eventId);
+  if (!event) return;
+  if (event.organizer !== getSession()?.userId) {
+    alert('Apenas o organizador pode exportar estatisticas deste evento.');
+    return;
+  }
+  window.print();
+}
+
+function getEventStatus(ev) {
+  if (ev.estado === 'rascunho') return { cls: 'pending', label: 'Rascunho' };
+  if (new Date(ev.data) < new Date()) return { cls: 'done', label: 'Concluido' };
+  if (getAvailableSeats(ev) <= 0) return { cls: 'done', label: 'Esgotado' };
+  return { cls: 'active', label: 'Publicado' };
+}
+
+function getActiveRegistrationsForEvent(eventId) {
+  return getRegistrations().filter((r) => r.eventId === eventId && r.status === 'confirmada');
+}
+
+function getAvailableSeats(ev) {
+  return Math.max(0, Number(ev.capac || 0) - getActiveRegistrationsForEvent(ev.id).length);
+}
+
+function findUserRegistration(eventId) {
+  const session = getSession();
+  if (!session) return null;
+  return getRegistrations().find((r) => r.eventId === eventId && r.userId === session.userId && r.status === 'confirmada') || null;
+}
+
+async function handleEventRegistration() {
+  const eventId = document.getElementById('ed-hero').dataset.eventId;
+  const ev = getEvents().find((e) => e.id === eventId);
+  const session = getSession();
+
+  if (!session) {
+    sessionStorage.setItem('eventhub_pending_registration', eventId);
+    showView('login');
+    return;
+  }
+  if (!ev) return;
+  if (findUserRegistration(eventId)) return renderRegistrationState(ev);
+  if (getAvailableSeats(ev) <= 0) {
+    renderRegistrationMessage('Evento esgotado. Nao existem vagas disponiveis.');
+    return;
+  }
+
+  const registration = {
+    id: Math.random().toString(36).slice(2, 9),
+    reference: makeReference(ev.id),
+    eventId: ev.id,
+    eventTitle: ev.titulo,
+    eventDate: ev.data,
+    userId: session.userId,
+    userName: session.nome,
+    userEmail: session.email,
+    status: 'confirmada',
+    createdAt: new Date().toISOString(),
+    emailSentAt: new Date().toISOString()
+  };
+
+  await delay(250);
+  saveRegistrations([...getRegistrations(), registration]);
+  renderRegistrationState(ev);
+  renderAgenda(ev);
+  renderEventStats(ev);
+  updateStats();
+}
+
+function handleCancelRegistration() {
+  const eventId = document.getElementById('ed-hero').dataset.eventId;
+  const ev = getEvents().find((e) => e.id === eventId);
+  const registration = findUserRegistration(eventId);
+  if (!registration || !confirm('Deseja cancelar esta inscricao?')) return;
+
+  const regs = getRegistrations().map((r) => r.id === registration.id ? { ...r, status: 'cancelada', cancelledAt: new Date().toISOString() } : r);
+  saveRegistrations(regs);
+  renderRegistrationState(ev);
+  renderAgenda(ev);
+  renderEventStats(ev);
+  updateStats();
+}
+
+function renderRegistrationState(ev) {
+  const btnRegister = document.getElementById('btn-register-event');
+  const btnCancel = document.getElementById('btn-cancel-registration');
+  const confirmation = document.getElementById('registration-confirmation');
+  const registration = findUserRegistration(ev.id);
+  const session = getSession();
+  const available = getAvailableSeats(ev);
+
+  document.getElementById('ed-vagas').textContent = available;
+  confirmation.classList.toggle('hidden', !registration);
+  btnCancel.classList.toggle('hidden', !registration);
+
+  if (registration) {
+    btnRegister.textContent = 'Inscricao Confirmada';
+    btnRegister.disabled = true;
+    document.getElementById('reg-reference').textContent = registration.reference;
+    document.getElementById('reg-email-sent').textContent = `Enviado para ${registration.userEmail} em ${new Date(registration.emailSentAt).toLocaleString('pt-PT')}`;
+    renderRegistrationMessage('A sua inscricao esta confirmada.');
+    return;
+  }
+
+  btnRegister.disabled = available <= 0;
+  btnRegister.textContent = available <= 0 ? 'Evento Esgotado' : 'Inscrever-me Agora';
+  renderRegistrationMessage(session ? 'Verificamos as vagas disponiveis antes de confirmar.' : 'Login obrigatorio para confirmar a inscricao.');
+}
+
+function renderRegistrationMessage(message) {
+  document.getElementById('ed-registration-msg').textContent = message;
+}
+
+function makeReference(eventId) {
+  const stamp = Date.now().toString(36).toUpperCase().slice(-5);
+  const eventPart = eventId.toUpperCase().slice(0, 3).padEnd(3, 'X');
+  return `EH-${eventPart}-${stamp}`;
+}
+
+function renderRegistrationHistory(containerId) {
+  const container = document.getElementById(containerId);
+  const session = getSession();
+  if (!container || !session) return;
+
+  const regs = getRegistrations()
+    .filter((r) => r.userId === session.userId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (regs.length === 0) {
+    container.innerHTML = '<p class="empty-msg">Ainda nao existem inscricoes no historico.</p>';
+    return;
+  }
+
+  container.innerHTML = regs.map((r) => {
+    const ev = getEvents().find((event) => event.id === r.eventId);
+    const status = r.status === 'confirmada' ? 'Confirmada' : 'Cancelada';
+    return `
+      <div class="registration-card ${r.status === 'cancelada' ? 'cancelled' : ''}">
+        <div>
+          <strong>${escapeHtml(r.eventTitle)}</strong>
+          <span>Referencia: ${r.reference}</span>
+          <span>Data: ${new Date(r.eventDate).toLocaleString('pt-PT')}</span>
+          <span>Estado: ${status}</span>
+        </div>
+        ${ev ? `<button class="btn btn-secondary" onclick="app.visitEvent('${r.eventId}')">Ver evento</button>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function initSessionModal() {
+  document.getElementById('ce-add-session-btn')?.addEventListener('click', () => openSessionModal());
+  document.getElementById('closeSessionModal')?.addEventListener('click', () => document.getElementById('sessionModal').classList.add('hidden'));
+  document.getElementById('sess-tipo')?.addEventListener('change', (e) => {
+    document.getElementById('lbl-sess-local').textContent = e.target.value === 'online' ? 'Link da Reuniao' : 'Sala / Local';
+  });
+  document.getElementById('sessionForm')?.addEventListener('submit', handleSessionSubmit);
+}
+
 function openSessionModal(eventId = null, sessionId = null) {
-  const modal = document.getElementById('sessionModal');
   const form = document.getElementById('sessionForm');
-  const title = document.getElementById('sessionModalTitle');
-  const error = document.getElementById('sess-error');
-  
   form.reset();
-  error.textContent = '';
+  document.getElementById('sess-error').textContent = '';
   editingEventId = eventId;
-  sessSpeakers = [];
-  
+
   if (sessionId) {
-    title.textContent = 'Editar Sessão';
-    const event = eventId ? getEvents().find(e => e.id === eventId) : null;
-    const sess = event ? event.sessions.find(s => s.id === sessionId) : tempSessions.find(s => s.id === sessionId);
-    
+    const sessions = eventId ? getEvents().find((e) => e.id === eventId)?.sessions || [] : tempSessions;
+    const sess = sessions.find((s) => s.id === sessionId);
     if (sess) {
       document.getElementById('sess-id').value = sess.id;
       document.getElementById('sess-titulo').value = sess.titulo;
@@ -687,147 +913,82 @@ function openSessionModal(eventId = null, sessionId = null) {
       document.getElementById('sess-tipo').value = sess.tipo;
       document.getElementById('sess-capacidade').value = sess.capacidade;
       document.getElementById('sess-local').value = sess.local;
-      document.getElementById('lbl-sess-local').textContent = sess.tipo === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
-      sessSpeakers = sess.speakerIds || [];
     }
   } else {
-    title.textContent = 'Adicionar Sessão';
     document.getElementById('sess-id').value = '';
   }
-  
-  renderSessSpeakers();
-  modal.classList.remove('hidden');
-}
-
-function handleSpeakerSearch(e) {
-  const q = e.target.value.toLowerCase().trim();
-  const results = document.getElementById('speaker-search-results');
-  if (q.length < 2) { results.classList.add('hidden'); return; }
-
-  const filtered = getSpeakers().filter(s => s.nome.toLowerCase().includes(q) && !sessSpeakers.includes(s.id));
-  if (filtered.length === 0) { results.classList.add('hidden'); return; }
-
-  results.innerHTML = filtered.map(s => `
-    <div class="search-item" onclick="app.addSpeakerToSess('${s.id}')">
-      <img src="${s.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80'}" class="avatar-xs" />
-      <div class="search-item-info">
-        <strong>${s.nome}</strong>
-        <small>${s.contacto}</small>
-      </div>
-    </div>
-  `).join('');
-  results.classList.remove('hidden');
-}
-
-function renderSessSpeakers() {
-  const container = document.getElementById('sess-speakers-list');
-  const speakers = getSpeakers();
-  container.innerHTML = sessSpeakers.map(id => {
-    const s = speakers.find(x => x.id === id);
-    return s ? `
-      <div class="speaker-tag">
-        <span>${s.nome}</span>
-        <button type="button" onclick="app.removeSpeakerFromSess('${id}')">✕</button>
-      </div>
-    ` : '';
-  }).join('');
-}
-
-function handleNewSpeakerSubmit(e) {
-  e.preventDefault();
-  const nome = document.getElementById('spk-nome').value.trim();
-  const bio = document.getElementById('spk-bio').value.trim();
-  const contacto = document.getElementById('spk-contacto').value.trim();
-  const foto = document.getElementById('spk-foto').value.trim();
-
-  const id = Math.random().toString(36).substr(2, 6);
-  const speakers = getSpeakers();
-  speakers.push({ id, nome, bio, contacto, foto });
-  saveSpeakers(speakers);
-
-  sessSpeakers.push(id);
-  renderSessSpeakers();
-  document.getElementById('newSpeakerModal').classList.add('hidden');
-  document.getElementById('newSpeakerForm').reset();
+  document.getElementById('sessionModal').classList.remove('hidden');
 }
 
 function handleSessionSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('sess-id').value || Math.random().toString(36).substr(2, 6);
+  const id = document.getElementById('sess-id').value || Math.random().toString(36).slice(2, 8);
   const titulo = document.getElementById('sess-titulo').value.trim();
   const desc = document.getElementById('sess-desc').value.trim();
   const inicio = document.getElementById('sess-inicio').value;
   const fim = document.getElementById('sess-fim').value;
   const tipo = document.getElementById('sess-tipo').value;
-  const capacidade = parseInt(document.getElementById('sess-capacidade').value);
+  const capacidade = parseInt(document.getElementById('sess-capacidade').value, 10);
   const local = document.getElementById('sess-local').value.trim();
   const error = document.getElementById('sess-error');
 
+  if (!titulo || !desc || !inicio || !fim || !capacidade || !local) {
+    error.textContent = 'Preencha todos os campos obrigatorios.';
+    return;
+  }
   if (inicio >= fim) {
-    error.textContent = 'A hora de fim deve ser após o início.';
+    error.textContent = 'A hora de fim deve ser apos o inicio.';
     return;
   }
 
-  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local, speakerIds: sessSpeakers };
-  
-  // Validation of conflicts
-  const currentSessions = editingEventId ? (getEvents().find(e => e.id === editingEventId)?.sessions || []) : tempSessions;
-  const otherSessions = currentSessions.filter(s => s.id !== id);
-  
-  const conflict = otherSessions.find(s => (inicio < s.fim) && (fim > s.inicio));
+  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local };
+  const currentSessions = editingEventId ? getEvents().find((ev) => ev.id === editingEventId)?.sessions || [] : tempSessions;
+  const conflict = currentSessions.filter((s) => s.id !== id).find((s) => inicio < s.fim && fim > s.inicio);
   if (conflict) {
-    error.textContent = `Conflito de horário com a sessão: ${conflict.titulo}`;
+    error.textContent = `Conflito de horario com a sessao: ${conflict.titulo}`;
     return;
   }
 
   if (editingEventId) {
-    // Direct update of existing event
     const events = getEvents();
-    const ev = events.find(e => e.id === editingEventId);
+    const ev = events.find((event) => event.id === editingEventId);
     if (ev) {
-      const idx = ev.sessions ? ev.sessions.findIndex(s => s.id === id) : -1;
-      if (idx > -1) ev.sessions[idx] = newSess;
-      else {
-        if (!ev.sessions) ev.sessions = [];
-        ev.sessions.push(newSess);
-      }
+      const idx = ev.sessions.findIndex((s) => s.id === id);
+      if (idx >= 0) ev.sessions[idx] = newSess;
+      else ev.sessions.push(newSess);
       saveEvents(events);
       renderAgenda(ev);
     }
   } else {
-    // Update temp sessions for new event
-    const idx = tempSessions.findIndex(s => s.id === id);
-    if (idx > -1) tempSessions[idx] = newSess;
+    const idx = tempSessions.findIndex((s) => s.id === id);
+    if (idx >= 0) tempSessions[idx] = newSess;
     else tempSessions.push(newSess);
     renderTempSessions();
   }
-
   document.getElementById('sessionModal').classList.add('hidden');
 }
 
 function renderTempSessions() {
   const list = document.getElementById('ce-sessions-list');
+  if (!list) return;
   if (tempSessions.length === 0) {
     list.classList.add('hidden');
+    list.innerHTML = '';
     return;
   }
-  
+
   list.classList.remove('hidden');
-  const sorted = [...tempSessions].sort((a, b) => a.inicio.localeCompare(b.inicio));
-  
   list.innerHTML = `
-    <h4>Agenda Pré-visualização (${tempSessions.length} sessões)</h4>
+    <h4>Agenda Pre-visualizacao (${tempSessions.length} sessoes)</h4>
     <div class="temp-sessions-grid">
-      ${sorted.map(s => `
+      ${tempSessions.map((s) => `
         <div class="temp-session-card">
           <div class="temp-sess-time">${s.inicio} - ${s.fim}</div>
-          <div class="temp-sess-main">
-            <strong>${s.titulo}</strong>
-            <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
-          </div>
+          <strong>${escapeHtml(s.titulo)}</strong>
+          <span>${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</span>
           <div class="temp-sess-actions">
-            <button type="button" onclick="app.editSession(null, '${s.id}')">✏️</button>
-            <button type="button" onclick="app.deleteSession(null, '${s.id}')">🗑️</button>
+            <button type="button" onclick="app.editSession(null, '${s.id}')">Editar</button>
+            <button type="button" onclick="app.deleteSession(null, '${s.id}')">Eliminar</button>
           </div>
         </div>
       `).join('')}
@@ -835,319 +996,55 @@ function renderTempSessions() {
   `;
 }
 
-// Update Global helper
+function initRecovery() {
+  const modal = document.getElementById('recoverModal');
+  const recoverForm = document.getElementById('recover-form-div');
+  const recoverSucc = document.getElementById('recover-success-div');
+  document.getElementById('forgotPwLink')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    modal.classList.remove('hidden');
+    recoverForm.classList.remove('hidden');
+    recoverSucc.classList.add('hidden');
+  });
+  document.getElementById('closeModal')?.addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('closeRecoverSuccess')?.addEventListener('click', () => modal.classList.add('hidden'));
+  document.getElementById('sendRecoverBtn')?.addEventListener('click', async () => {
+    const email = document.getElementById('recoverEmail').value.trim();
+    if (!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email valido.');
+    await delay(250);
+    document.getElementById('recoverSentTo').textContent = email;
+    recoverForm.classList.add('hidden');
+    recoverSucc.classList.remove('hidden');
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[ch]));
+}
+
 window.app = {
   visitEvent: (id) => showView('details', { id }),
   editSession: (eventId, sessionId) => openSessionModal(eventId, sessionId),
+  submitSessionFeedback: handleSessionFeedbackSubmit,
   deleteSession: (eventId, sessionId) => {
-    if (!confirm('Deseja eliminar esta sessão?')) return;
+    if (!confirm('Deseja eliminar esta sessao?')) return;
     if (eventId) {
       const events = getEvents();
-      const ev = events.find(e => e.id === eventId);
+      const ev = events.find((e) => e.id === eventId);
       if (ev) {
-        ev.sessions = ev.sessions.filter(s => s.id !== sessionId);
+        ev.sessions = ev.sessions.filter((s) => s.id !== sessionId);
         saveEvents(events);
         renderAgenda(ev);
       }
     } else {
-      tempSessions = tempSessions.filter(s => s.id !== sessionId);
+      tempSessions = tempSessions.filter((s) => s.id !== sessionId);
       renderTempSessions();
     }
-  },
-  addSpeakerToSess: (id) => {
-    if (!sessSpeakers.includes(id)) {
-      sessSpeakers.push(id);
-      renderSessSpeakers();
-    }
-    document.getElementById('sess-speaker-search').value = '';
-    document.getElementById('speaker-search-results').classList.add('hidden');
-  },
-  removeSpeakerFromSess: (id) => {
-    sessSpeakers = sessSpeakers.filter(x => x !== id);
-    renderSessSpeakers();
-  },
-  viewSpeaker: (id) => {
-    const spk = getSpeakers().find(s => s.id === id);
-    if (!spk) return;
-    
-    const events = getEvents();
-    const speakerSessions = [];
-    events.forEach(ev => {
-      if (ev.sessions) {
-        ev.sessions.forEach(sess => {
-          if (sess.speakerIds && sess.speakerIds.includes(id)) {
-            speakerSessions.push({ event: ev, session: sess });
-          }
-        });
-      }
-    });
-
-    const modal = document.getElementById('speakerProfileModal');
-    const content = document.getElementById('profile-content');
-    
-    content.innerHTML = `
-      <div class="profile-header">
-        <img src="${spk.foto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80'}" class="profile-avatar" />
-        <div class="profile-info">
-          <h2>${spk.nome}</h2>
-          <p class="profile-bio">${spk.bio}</p>
-          <div class="profile-contact">
-            <strong>Contacto:</strong> ${spk.contacto}
-          </div>
-        </div>
-      </div>
-      <div class="profile-sessions">
-        <h3>Sessões (${speakerSessions.length})</h3>
-        <div class="profile-sessions-list">
-          ${speakerSessions.length === 0 ? '<p>Nenhuma sessão associada ainda.</p>' : speakerSessions.map(item => `
-            <div class="profile-sess-card" onclick="app.visitEvent('${item.event.id}')">
-              <strong>${item.session.titulo}</strong>
-              <span>${item.event.titulo}</span>
-              <small>${item.session.inicio} - ${item.session.fim}</small>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-    
-    modal.classList.remove('hidden');
   }
 };
-
-function logout() {
-  localStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_KEY);
-  showView('login');
-}
-
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('logoutBtnTop').addEventListener('click', logout);
-document.getElementById('logoutBtnCard').addEventListener('click', logout);
-
-// ── EVENT LOGIC ──
-function initEventLogic() {
-  ceDropzone.addEventListener('click', () => ceImgInput.click());
-  ceImgInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = e => {
-        ceImgPreview.src = e.target.result;
-        ceImgPreview.classList.remove('hidden');
-        ceUploadUI.classList.add('hidden');
-        ceForm.dataset.img = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  ceForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const titulo = document.getElementById('ce-titulo').value.trim();
-    const desc = document.getElementById('ce-desc').value.trim();
-    const data = document.getElementById('ce-data').value;
-    const local = document.getElementById('ce-local').value.trim();
-    const link = document.getElementById('ce-link').value.trim();
-    const formato = document.getElementById('ce-formato').value;
-    const capac = document.getElementById('ce-capacidade').value;
-    const estado = ceForm.querySelector('input[name="ce-estado"]:checked').value;
-
-    let valid = true;
-    if (!titulo) valid = setFieldError('ce-titulo', 'Obrigatório.');
-    if (!desc) valid = setFieldError('ce-desc', 'Obrigatório.');
-    if (!data) valid = setFieldError('ce-data', 'Obrigatório.');
-    else if (new Date(data) < new Date()) valid = setFieldError('ce-data', 'Data deve ser futura.');
-    if (!local) valid = setFieldError('ce-local', 'Obrigatório.');
-    // link is optional, but if present should be valid URL
-    if (link && !link.startsWith('http')) valid = setFieldError('ce-link', 'URL inválido.');
-    if (!formato) valid = setFieldError('ce-formato', 'Obrigatório.');
-    if (!capac || capac < 1) valid = setFieldError('ce-capacidade', 'Inválido.');
-
-    if (!valid) return;
-
-    ceBtn.disabled = true;
-    ceBtn.querySelector('.btn-text').classList.add('hidden');
-    ceBtn.querySelector('.btn-spinner').classList.remove('hidden');
-
-    await delay(1200);
-
-    const eventId = Math.random().toString(36).substr(2, 6);
-    const newEvent = {
-      id: eventId, titulo, desc, data, local, link, formato, capac, estado,
-      sessions: tempSessions,
-      imgPreview: ceForm.dataset.img || null,
-      url: `https://eventhub.com/e/${eventId}`,
-      organizer: getSession().userId,
-      createdAt: new Date().toISOString()
-    };
-
-    const events = getEvents();
-    events.push(newEvent);
-    saveEvents(events);
-
-    document.getElementById('ce-event-url').textContent = newEvent.url;
-    // Add click to visit event directly from success
-    document.getElementById('ce-event-url').style.cursor = 'pointer';
-    document.getElementById('ce-event-url').onclick = () => window.app.visitEvent(eventId);
-
-    ceForm.classList.add('hidden');
-    document.getElementById('ce-success').classList.remove('hidden');
-
-    ceBtn.disabled = false;
-    ceBtn.querySelector('.btn-text').classList.remove('hidden');
-    ceBtn.querySelector('.btn-spinner').classList.add('hidden');
-    ceForm.reset();
-    tempSessions = [];
-    renderTempSessions();
-    delete ceForm.dataset.img;
-    ceImgPreview.classList.add('hidden');
-    ceUploadUI.classList.remove('hidden');
-  });
-}
-
-// ── UI TOGGLES ──
-function initToggles() {
-  document.querySelectorAll('.toggle-pw').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById(btn.dataset.target);
-      const isPw = input.type === 'password';
-      input.type = isPw ? 'text' : 'password';
-      btn.textContent = isPw ? '🔒' : '👁';
-    });
-  });
-}
-
-// ── MODALS ──
-function initModals() {
-  const modal = document.getElementById('recoverModal');
-  const recoverForm = document.getElementById('recover-form-div');
-  const recoverSucc = document.getElementById('recover-success-div');
-  document.getElementById('forgotPwLink').addEventListener('click', e => {
-    e.preventDefault(); modal.classList.remove('hidden'); recoverForm.classList.remove('hidden'); recoverSucc.classList.add('hidden');
-  });
-  const close = () => modal.classList.add('hidden');
-  document.getElementById('closeModal').addEventListener('click', close);
-  document.getElementById('closeRecoverSuccess').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  document.getElementById('sendRecoverBtn').addEventListener('click', async () => {
-    const email = document.getElementById('recoverEmail').value.trim();
-    if (!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email válido.');
-    const btn = document.getElementById('sendRecoverBtn');
-    btn.disabled = true; btn.querySelector('.btn-spinner').classList.remove('hidden');
-    await delay(1200);
-    document.getElementById('recoverSentTo').textContent = email;
-    recoverForm.classList.add('hidden'); recoverSucc.classList.remove('hidden');
-    btn.disabled = false; btn.querySelector('.btn-spinner').classList.add('hidden');
-  });
-}
-
-// ── FULL AGENDA LOGIC ──
-function renderFullAgenda(eventId) {
-  const events = getEvents();
-  // Ensure we have dummy data for testing if no events exist
-  const dummy = [
-    { 
-      id: 'd1', 
-      titulo: 'Workshop React', 
-      data: '2026-05-15T10:00', 
-      sessions: [
-        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Sessão de boas-vindas e apresentação dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk1'], capacidade: 100 },
-        { id: 's2', titulo: 'Hooks Avançados', desc: 'Exploração profunda de useMemo, useCallback e hooks customizados.', inicio: '11:00', fim: '12:30', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk2'], capacidade: 50 },
-        { id: 's3', titulo: 'CSS-in-JS vs Tailwind', desc: 'Painel de discussão sobre o futuro do styling em aplicações modernas.', inicio: '11:00', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', speakerIds: ['spk3'], capacidade: 200 },
-        { id: 's4', titulo: 'State Management 2026', desc: 'Zustand, Redux ou Context API? O que escolher.', inicio: '14:00', fim: '15:30', tipo: 'presencial', local: 'Sala B1', speakerIds: ['spk1', 'spk2'], capacidade: 40 }
-      ] 
-    }
-  ];
-
-  const ev = [...dummy, ...events].find(e => e.id === eventId);
-  if (!ev) { showView('listEvents'); return; }
-
-  document.getElementById('fa-event-title').textContent = ev.titulo;
-  const dateObj = new Date(ev.data);
-  document.getElementById('fa-event-date').textContent = dateObj.toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-  const sessions = ev.sessions || [];
-  const speakers = getSpeakers();
-
-  // Populate Filters if empty
-  const fSpeaker = document.getElementById('filter-speaker');
-  const fRoom = document.getElementById('filter-room');
-  
-  if (fSpeaker.options.length <= 1) {
-    const sessionSpeakerIds = [...new Set(sessions.flatMap(s => s.speakerIds || []))];
-    sessionSpeakerIds.forEach(sid => {
-      const spk = speakers.find(x => x.id === sid);
-      if (spk) fSpeaker.add(new Option(spk.nome, sid));
-    });
-  }
-  if (fRoom.options.length <= 1) {
-    const rooms = [...new Set(sessions.map(s => s.local))];
-    rooms.forEach(r => fRoom.add(new Option(r, r)));
-  }
-
-  // Filter Logic
-  const valType = document.getElementById('filter-type').value;
-  const valSpeaker = document.getElementById('filter-speaker').value;
-  const valRoom = document.getElementById('filter-room').value;
-
-  const filtered = sessions.filter(s => {
-    if (valType !== 'all' && s.tipo !== valType) return false;
-    if (valSpeaker !== 'all' && !(s.speakerIds || []).includes(valSpeaker)) return false;
-    if (valRoom !== 'all' && s.local !== valRoom) return false;
-    return true;
-  });
-
-  // Sort by time
-  filtered.sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-  // Render Grid
-  const grid = document.getElementById('agenda-calendar-grid');
-  if (filtered.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="padding: 60px; text-align: center;">
-        <div class="success-icon" style="background: var(--surface-2); color: var(--text-muted);">🔍</div>
-        <p>Nenhuma sessão corresponde aos filtros aplicados.</p>
-        <button class="btn-text-sm" onclick="document.querySelectorAll('.agenda-filters select').forEach(s => s.value='all'); app.renderFullAgenda('${ev.id}')">Limpar Filtros</button>
-      </div>
-    `;
-    return;
-  }
-
-  // Group by time slots
-  const slots = {};
-  filtered.forEach(s => {
-    if (!slots[s.inicio]) slots[s.inicio] = [];
-    slots[s.inicio].push(s);
-  });
-
-  grid.innerHTML = Object.entries(slots).sort((a,b) => a[0].localeCompare(b[0])).map(([time, sessList]) => `
-    <div class="calendar-row">
-      <div class="calendar-time">${time}</div>
-      <div class="calendar-tracks">
-        ${sessList.map(s => {
-          const isParallel = sessList.length > 1;
-          const sSpks = (s.speakerIds || []).map(sid => {
-            const spk = speakers.find(x => x.id === sid);
-            return spk ? `<span class="speaker-badge" onclick="event.stopPropagation(); app.viewSpeaker('${spk.id}')">${spk.nome}</span>` : '';
-          }).join('');
-          
-          return `
-            <div class="calendar-session-card" onclick="app.editSession('${ev.id}', '${s.id}')">
-              ${isParallel ? '<span class="parallel-indicator">Paralela</span>' : ''}
-              <h3>${s.titulo}</h3>
-              <p>${s.desc}</p>
-              <div class="card-meta-info">
-                <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
-                <div class="session-speakers" style="margin-top:0;">${sSpks}</div>
-                <span title="Capacidade">👥 ${s.capacidade}</span>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `).join('');
-}
-
-// Add to window.app for filter cleaning
-window.app.renderFullAgenda = renderFullAgenda;
