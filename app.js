@@ -4,6 +4,7 @@ const USERS_KEY = 'eventhub_users';
 const SESSION_KEY = 'eventhub_session';
 const EVENTS_KEY = 'eventhub_events';
 const REGISTRATIONS_KEY = 'eventhub_registrations';
+const FEEDBACK_KEY = 'eventhub_session_feedback';
 
 const views = {
   register: document.getElementById('view-register'),
@@ -12,11 +13,7 @@ const views = {
   createEvent: document.getElementById('view-create-event'),
   listEvents: document.getElementById('view-list-events'),
   details: document.getElementById('view-event-details'),
-<<<<<<< HEAD
   profile: document.getElementById('view-profile')
-=======
-  agenda: document.getElementById('view-full-agenda')
->>>>>>> 1b44220a63e13055672c6f0a336dba79992075c8
 };
 
 let tempSessions = [];
@@ -28,6 +25,8 @@ const getEvents = () => JSON.parse(localStorage.getItem(EVENTS_KEY) || '[]');
 const saveEvents = (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
 const getRegistrations = () => JSON.parse(localStorage.getItem(REGISTRATIONS_KEY) || '[]');
 const saveRegistrations = (regs) => localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(regs));
+const getFeedback = () => JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]');
+const saveFeedback = (feedback) => localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback));
 const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -42,167 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSession();
 });
 
-<<<<<<< HEAD
-=======
-function initDefaultSpeakers() {
-  const speakers = getSpeakers();
-  if (speakers.length === 0) {
-    const defaults = [
-      {
-        id: 'spk1',
-        nome: 'Dra. Ana Silva',
-        bio: 'Especialista em Inteligência Artificial e Professora Catedrática no IST. Com mais de 15 anos de experiência, tem liderado projetos inovadores na área de Machine Learning.',
-        contacto: 'ana.silva@exemplo.pt | linkedin.com/in/anasilva',
-        foto: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&q=80'
-      },
-      {
-        id: 'spk2',
-        nome: 'Eng. Ricardo Pereira',
-        bio: 'Arquiteto de Software na CloudTech. Especialista em infraestrutura escalável e micro-serviços. Orador habitual em conferências internacionais de tecnologia.',
-        contacto: 'ricardo.p@cloudtech.com | @rpereira_tech',
-        foto: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80'
-      },
-      {
-        id: 'spk3',
-        nome: 'Maria João Santos',
-        bio: 'Product Designer na DesignFlow. Focada em criar experiências de utilizador memoráveis e acessíveis. Mentora de UX/UI para startups.',
-        contacto: 'mjsantos@designflow.io',
-        foto: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80'
-      }
-    ];
-    saveSpeakers(defaults);
-  }
-}
-
-// ── ROUTING ──
-function showView(viewId, params = {}) {
-  Object.values(views).forEach(v => v.classList.add('hidden'));
-  views[viewId].classList.remove('hidden');
-
-  // Close any open modals
-  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
-  // Close search results
-  const searchResults = document.getElementById('speaker-search-results');
-  if (searchResults) searchResults.classList.add('hidden');
-
-  // Update sidebar active state
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.toggle('active', item.dataset.target === viewId);
-  });
-
-  window.scrollTo(0, 0);
-  if (viewId === 'dashboard') populateDashboard(getSession());
-  if (viewId === 'listEvents') populateEventsGrid();
-  if (viewId === 'details') renderEventDetails(params.id);
-  if (viewId === 'agenda') renderFullAgenda(params.id);
-}
-
-function initRouting() {
-  document.getElementById('goLogin')?.addEventListener('click', e => { e.preventDefault(); showView('login'); });
-  document.getElementById('goRegister')?.addEventListener('click', e => { e.preventDefault(); showView('register'); });
-  document.getElementById('reg-goLogin')?.addEventListener('click', () => showView('login'));
-
-  // Handle ALL sidebar and navigation links with data-target
-  document.addEventListener('click', e => {
-    const target = e.target.closest('[data-target]');
-    if (target) {
-      e.preventDefault();
-      showView(target.dataset.target);
-    }
-  });
-
-  document.getElementById('btn-nav-create').addEventListener('click', () => showView('createEvent'));
-  document.getElementById('btn-nav-create-le').addEventListener('click', () => showView('createEvent'));
-  document.getElementById('nav-back-dash')?.addEventListener('click', e => { e.preventDefault(); showView('dashboard'); });
-  document.getElementById('btn-cancel-create').addEventListener('click', () => showView('dashboard'));
-  document.getElementById('btn-back-from-details').addEventListener('click', () => showView('listEvents'));
-  
-  document.getElementById('btn-view-full-agenda').addEventListener('click', () => {
-    const id = document.getElementById('ed-hero').dataset.eventId;
-    showView('agenda', { id });
-  });
-
-  document.getElementById('btn-back-from-agenda').addEventListener('click', () => {
-    const id = document.getElementById('ed-hero').dataset.eventId;
-    showView('details', { id });
-  });
-
-  document.getElementById('btn-export-pdf').addEventListener('click', () => {
-    window.print();
-  });
-
-  // Filters
-  ['filter-day', 'filter-type', 'filter-speaker', 'filter-room'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('change', () => {
-        const evId = document.getElementById('ed-hero').dataset.eventId;
-        renderFullAgenda(evId);
-      });
-    }
-  });
-
-  document.getElementById('ce-go-dash').addEventListener('click', () => {
-    ceForm.classList.remove('hidden');
-    document.getElementById('ce-success').classList.add('hidden');
-    tempSessions = [];
-    renderTempSessions();
-    showView('dashboard');
-  });
-
-  // Session Modal
-  document.getElementById('ce-add-session-btn').addEventListener('click', () => openSessionModal());
-  document.getElementById('closeSessionModal').addEventListener('click', () => document.getElementById('sessionModal').classList.add('hidden'));
-  document.getElementById('sessionForm').addEventListener('submit', handleSessionSubmit);
-  document.getElementById('sess-tipo').addEventListener('change', (e) => {
-    document.getElementById('lbl-sess-local').textContent = e.target.value === 'online' ? 'Link da Reunião *' : 'Sala / Local *';
-  });
-  document.getElementById('ed-add-session-inline').addEventListener('click', () => {
-    const evId = document.getElementById('ed-hero').dataset.eventId;
-    openSessionModal(evId);
-  });
-
-  // Speaker Logic
-  document.getElementById('sess-speaker-search').addEventListener('input', handleSpeakerSearch);
-  document.getElementById('btn-add-speaker-manual').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.remove('hidden'));
-  document.getElementById('closeNewSpeakerModal').addEventListener('click', () => document.getElementById('newSpeakerModal').classList.add('hidden'));
-  document.getElementById('newSpeakerForm').addEventListener('submit', handleNewSpeakerSubmit);
-  document.getElementById('closeProfileModal').addEventListener('click', () => document.getElementById('speakerProfileModal').classList.add('hidden'));
-
-  // Close search results when clicking outside
-  document.addEventListener('click', e => {
-    const searchBox = document.querySelector('.speaker-search-box');
-    const results = document.getElementById('speaker-search-results');
-    if (searchBox && !searchBox.contains(e.target) && results) {
-      results.classList.add('hidden');
-    }
-    
-    // Close modals on clicking overlay
-    if (e.target.classList.contains('modal-overlay')) {
-      e.target.classList.add('hidden');
-    }
-  });
-}
-
-function checkSession() {
-  const session = getSession();
-  if (session) {
-    populateDashboard(session);
-    showView('dashboard');
-  } else {
-    showView('register');
-  }
-}
-
-// ── UTILS ──
-const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-const saveUsers = (users) => localStorage.setItem(USERS_KEY, JSON.stringify(users));
-const getEvents = () => JSON.parse(localStorage.getItem(EVENTS_KEY)) || [];
-const saveEvents = (events) => localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY)) || JSON.parse(localStorage.getItem(SESSION_KEY));
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
-
->>>>>>> 1b44220a63e13055672c6f0a336dba79992075c8
 function hashPassword(pw) {
   let hash = 0;
   for (let i = 0; i < pw.length; i++) hash = (Math.imul(31, hash) + pw.charCodeAt(i)) | 0;
@@ -539,19 +377,200 @@ function renderEventDetails(id) {
 
 function renderAgenda(event) {
   const list = document.getElementById('ed-sessions-list');
+  renderOrganizerFeedback(event);
   if (!event.sessions || event.sessions.length === 0) {
     list.innerHTML = '<p class="empty-msg">Nenhuma sessao programada.</p>';
     return;
   }
 
-  list.innerHTML = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio)).map((s) => `
+  list.innerHTML = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio)).map((s) => {
+    const stats = getSessionFeedbackStats(event.id, s.id);
+    const feedbackBlock = renderSessionFeedbackBlock(event, s, stats);
+    return `
     <div class="session-item">
       <div class="session-time">${s.inicio}<br>${s.fim}</div>
       <div class="session-info">
         <h4>${escapeHtml(s.titulo)}</h4>
         <p>${escapeHtml(s.desc)}</p>
         <div class="session-meta"><span>${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</span><span>👥 Max: ${s.capacidade}</span></div>
+        <div class="session-feedback-summary">
+          <strong>${stats.average ? `${stats.average.toFixed(1)} / 5` : 'Sem classificacoes'}</strong>
+          <span>${renderStars(stats.average || 0)} ${stats.count} feedback${stats.count === 1 ? '' : 's'}</span>
+        </div>
+        ${feedbackBlock}
       </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function renderSessionFeedbackBlock(event, session, stats) {
+  const activeRegistration = findUserRegistration(event.id);
+  const userFeedback = findUserFeedback(event.id, session.id);
+  const canEdit = userFeedback ? isFeedbackEditable(userFeedback) : true;
+  const userRating = userFeedback?.rating || 0;
+  const userComment = userFeedback?.comment || '';
+  const message = !activeRegistration
+    ? '<p class="feedback-lock">Inscreva-se no evento para deixar feedback sobre esta sessao.</p>'
+    : (!canEdit ? '<p class="feedback-lock">O periodo de edicao de 24h terminou. O seu feedback fica guardado.</p>' : '');
+
+  const form = activeRegistration && canEdit ? `
+    <form class="feedback-form" onsubmit="app.submitSessionFeedback(event, '${event.id}', '${session.id}')">
+      <div class="star-input" aria-label="Classificacao por estrelas">
+        ${[5, 4, 3, 2, 1].map((value) => `
+          <input type="radio" id="fb-${session.id}-${value}" name="rating-${session.id}" value="${value}" ${userRating === value ? 'checked' : ''} required>
+          <label for="fb-${session.id}-${value}" title="${value} estrelas">★</label>
+        `).join('')}
+      </div>
+      <textarea name="comment" maxlength="500" rows="3" placeholder="Comentario opcional (max. 500 caracteres)">${escapeHtml(userComment)}</textarea>
+      <div class="feedback-actions">
+        <span>${userFeedback ? 'Pode editar durante 24h apos enviar.' : 'O comentario fica listado como moderado.'}</span>
+        <button class="btn btn-secondary" type="submit">${userFeedback ? 'Atualizar feedback' : 'Enviar feedback'}</button>
+      </div>
+    </form>
+  ` : '';
+
+  return `
+    <div class="session-feedback">
+      <div class="feedback-header">
+        <h5>Feedback da sessao</h5>
+        <span>Media: ${stats.average ? stats.average.toFixed(1) : '--'} (${stats.count})</span>
+      </div>
+      ${message}
+      ${form}
+      ${renderModeratedComments(event.id, session.id)}
+    </div>
+  `;
+}
+
+function renderStars(value) {
+  const rounded = Math.round(value);
+  return Array.from({ length: 5 }, (_, i) => i < rounded ? '★' : '☆').join('');
+}
+
+function getSessionFeedback(eventId, sessionId) {
+  return getFeedback().filter((item) => item.eventId === eventId && item.sessionId === sessionId && item.status === 'moderado');
+}
+
+function getSessionFeedbackStats(eventId, sessionId) {
+  const items = getSessionFeedback(eventId, sessionId);
+  const total = items.reduce((sum, item) => sum + Number(item.rating || 0), 0);
+  return {
+    average: items.length ? total / items.length : 0,
+    count: items.length
+  };
+}
+
+function findUserFeedback(eventId, sessionId) {
+  const session = getSession();
+  if (!session) return null;
+  return getFeedback().find((item) => item.eventId === eventId && item.sessionId === sessionId && item.userId === session.userId) || null;
+}
+
+function isFeedbackEditable(feedback) {
+  const changedAt = new Date(feedback.updatedAt || feedback.createdAt).getTime();
+  return Date.now() - changedAt <= 24 * 60 * 60 * 1000;
+}
+
+function renderModeratedComments(eventId, sessionId) {
+  const comments = getSessionFeedback(eventId, sessionId)
+    .filter((item) => item.comment)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+  if (comments.length === 0) return '<p class="feedback-empty">Ainda nao existem comentarios moderados.</p>';
+
+  return `
+    <div class="feedback-comments">
+      ${comments.map((item) => `
+        <article class="feedback-comment">
+          <div><strong>${escapeHtml(item.userName)}</strong><span>${renderStars(item.rating)} ${item.rating}/5</span></div>
+          <p>${escapeHtml(item.comment)}</p>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function handleSessionFeedbackSubmit(e, eventId, sessionId) {
+  e.preventDefault();
+  const ev = getEvents().find((event) => event.id === eventId);
+  const session = getSession();
+  const registration = findUserRegistration(eventId);
+  if (!ev || !session || !registration) {
+    alert('Apenas participantes inscritos podem deixar feedback.');
+    return;
+  }
+
+  const form = e.target;
+  const rating = Number(new FormData(form).get(`rating-${sessionId}`));
+  const comment = String(new FormData(form).get('comment') || '').trim();
+  if (rating < 1 || rating > 5) {
+    alert('Escolha uma classificacao entre 1 e 5 estrelas.');
+    return;
+  }
+  if (comment.length > 500) {
+    alert('O comentario deve ter no maximo 500 caracteres.');
+    return;
+  }
+
+  const feedback = getFeedback();
+  const existing = feedback.find((item) => item.eventId === eventId && item.sessionId === sessionId && item.userId === session.userId);
+  if (existing && !isFeedbackEditable(existing)) {
+    alert('O periodo de edicao de 24h terminou.');
+    renderAgenda(ev);
+    return;
+  }
+
+  const sessionInfo = ev.sessions.find((item) => item.id === sessionId);
+  const now = new Date().toISOString();
+  const entry = {
+    id: existing?.id || Math.random().toString(36).slice(2, 9),
+    eventId,
+    eventTitle: ev.titulo,
+    sessionId,
+    sessionTitle: sessionInfo?.titulo || 'Sessao',
+    organizerId: ev.organizer,
+    userId: session.userId,
+    userName: session.nome,
+    userEmail: session.email,
+    rating,
+    comment,
+    status: 'moderado',
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+    organizerNotifiedAt: now
+  };
+
+  const next = existing ? feedback.map((item) => item.id === existing.id ? entry : item) : [...feedback, entry];
+  saveFeedback(next);
+  alert(`Feedback enviado. O organizador recebeu uma notificacao sobre "${entry.sessionTitle}".`);
+  renderAgenda(ev);
+}
+
+function renderOrganizerFeedback(event) {
+  const card = document.getElementById('organizer-feedback-card');
+  const list = document.getElementById('organizer-feedback-list');
+  const session = getSession();
+  if (!card || !list) return;
+
+  const isOrganizer = event.organizer === session?.userId;
+  card.classList.toggle('hidden', !isOrganizer);
+  if (!isOrganizer) return;
+
+  const notifications = getFeedback()
+    .filter((item) => item.eventId === event.id)
+    .sort((a, b) => new Date(b.organizerNotifiedAt) - new Date(a.organizerNotifiedAt));
+
+  if (notifications.length === 0) {
+    list.innerHTML = '<p class="empty-msg">Ainda nao recebeu feedback.</p>';
+    return;
+  }
+
+  list.innerHTML = notifications.map((item) => `
+    <div class="organizer-feedback-item">
+      <strong>${escapeHtml(item.sessionTitle)}</strong>
+      <span>${renderStars(item.rating)} ${item.rating}/5 por ${escapeHtml(item.userName)}</span>
+      <small>Notificado em ${new Date(item.organizerNotifiedAt).toLocaleString('pt-PT')}</small>
     </div>
   `).join('');
 }
@@ -611,6 +630,7 @@ async function handleEventRegistration() {
   await delay(250);
   saveRegistrations([...getRegistrations(), registration]);
   renderRegistrationState(ev);
+  renderAgenda(ev);
   updateStats();
 }
 
@@ -623,6 +643,7 @@ function handleCancelRegistration() {
   const regs = getRegistrations().map((r) => r.id === registration.id ? { ...r, status: 'cancelada', cancelledAt: new Date().toISOString() } : r);
   saveRegistrations(regs);
   renderRegistrationState(ev);
+  renderAgenda(ev);
   updateStats();
 }
 
@@ -838,6 +859,7 @@ function escapeHtml(value) {
 window.app = {
   visitEvent: (id) => showView('details', { id }),
   editSession: (eventId, sessionId) => openSessionModal(eventId, sessionId),
+  submitSessionFeedback: handleSessionFeedbackSubmit,
   deleteSession: (eventId, sessionId) => {
     if (!confirm('Deseja eliminar esta sessao?')) return;
     if (eventId) {
@@ -853,246 +875,4 @@ window.app = {
       renderTempSessions();
     }
   }
-<<<<<<< HEAD
 };
-=======
-};
-
-function logout() {
-  localStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_KEY);
-  showView('login');
-}
-
-document.getElementById('logoutBtn').addEventListener('click', logout);
-document.getElementById('logoutBtnTop').addEventListener('click', logout);
-document.getElementById('logoutBtnCard').addEventListener('click', logout);
-
-// ── EVENT LOGIC ──
-function initEventLogic() {
-  ceDropzone.addEventListener('click', () => ceImgInput.click());
-  ceImgInput.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = e => {
-        ceImgPreview.src = e.target.result;
-        ceImgPreview.classList.remove('hidden');
-        ceUploadUI.classList.add('hidden');
-        ceForm.dataset.img = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  ceForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const titulo = document.getElementById('ce-titulo').value.trim();
-    const desc = document.getElementById('ce-desc').value.trim();
-    const data = document.getElementById('ce-data').value;
-    const local = document.getElementById('ce-local').value.trim();
-    const link = document.getElementById('ce-link').value.trim();
-    const formato = document.getElementById('ce-formato').value;
-    const capac = document.getElementById('ce-capacidade').value;
-    const estado = ceForm.querySelector('input[name="ce-estado"]:checked').value;
-
-    let valid = true;
-    if (!titulo) valid = setFieldError('ce-titulo', 'Obrigatório.');
-    if (!desc) valid = setFieldError('ce-desc', 'Obrigatório.');
-    if (!data) valid = setFieldError('ce-data', 'Obrigatório.');
-    else if (new Date(data) < new Date()) valid = setFieldError('ce-data', 'Data deve ser futura.');
-    if (!local) valid = setFieldError('ce-local', 'Obrigatório.');
-    // link is optional, but if present should be valid URL
-    if (link && !link.startsWith('http')) valid = setFieldError('ce-link', 'URL inválido.');
-    if (!formato) valid = setFieldError('ce-formato', 'Obrigatório.');
-    if (!capac || capac < 1) valid = setFieldError('ce-capacidade', 'Inválido.');
-
-    if (!valid) return;
-
-    ceBtn.disabled = true;
-    ceBtn.querySelector('.btn-text').classList.add('hidden');
-    ceBtn.querySelector('.btn-spinner').classList.remove('hidden');
-
-    await delay(1200);
-
-    const eventId = Math.random().toString(36).substr(2, 6);
-    const newEvent = {
-      id: eventId, titulo, desc, data, local, link, formato, capac, estado,
-      sessions: tempSessions,
-      imgPreview: ceForm.dataset.img || null,
-      url: `https://eventhub.com/e/${eventId}`,
-      organizer: getSession().userId,
-      createdAt: new Date().toISOString()
-    };
-
-    const events = getEvents();
-    events.push(newEvent);
-    saveEvents(events);
-
-    document.getElementById('ce-event-url').textContent = newEvent.url;
-    // Add click to visit event directly from success
-    document.getElementById('ce-event-url').style.cursor = 'pointer';
-    document.getElementById('ce-event-url').onclick = () => window.app.visitEvent(eventId);
-
-    ceForm.classList.add('hidden');
-    document.getElementById('ce-success').classList.remove('hidden');
-
-    ceBtn.disabled = false;
-    ceBtn.querySelector('.btn-text').classList.remove('hidden');
-    ceBtn.querySelector('.btn-spinner').classList.add('hidden');
-    ceForm.reset();
-    tempSessions = [];
-    renderTempSessions();
-    delete ceForm.dataset.img;
-    ceImgPreview.classList.add('hidden');
-    ceUploadUI.classList.remove('hidden');
-  });
-}
-
-// ── UI TOGGLES ──
-function initToggles() {
-  document.querySelectorAll('.toggle-pw').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById(btn.dataset.target);
-      const isPw = input.type === 'password';
-      input.type = isPw ? 'text' : 'password';
-      btn.textContent = isPw ? '🔒' : '👁';
-    });
-  });
-}
-
-// ── MODALS ──
-function initModals() {
-  const modal = document.getElementById('recoverModal');
-  const recoverForm = document.getElementById('recover-form-div');
-  const recoverSucc = document.getElementById('recover-success-div');
-  document.getElementById('forgotPwLink').addEventListener('click', e => {
-    e.preventDefault(); modal.classList.remove('hidden'); recoverForm.classList.remove('hidden'); recoverSucc.classList.add('hidden');
-  });
-  const close = () => modal.classList.add('hidden');
-  document.getElementById('closeModal').addEventListener('click', close);
-  document.getElementById('closeRecoverSuccess').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  document.getElementById('sendRecoverBtn').addEventListener('click', async () => {
-    const email = document.getElementById('recoverEmail').value.trim();
-    if (!email || !email.includes('@')) return setFieldError('recover-email', 'Introduza um email válido.');
-    const btn = document.getElementById('sendRecoverBtn');
-    btn.disabled = true; btn.querySelector('.btn-spinner').classList.remove('hidden');
-    await delay(1200);
-    document.getElementById('recoverSentTo').textContent = email;
-    recoverForm.classList.add('hidden'); recoverSucc.classList.remove('hidden');
-    btn.disabled = false; btn.querySelector('.btn-spinner').classList.add('hidden');
-  });
-}
-
-// ── FULL AGENDA LOGIC ──
-function renderFullAgenda(eventId) {
-  const events = getEvents();
-  // Ensure we have dummy data for testing if no events exist
-  const dummy = [
-    { 
-      id: 'd1', 
-      titulo: 'Workshop React', 
-      data: '2026-05-15T10:00', 
-      sessions: [
-        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Sessão de boas-vindas e apresentação dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk1'], capacidade: 100 },
-        { id: 's2', titulo: 'Hooks Avançados', desc: 'Exploração profunda de useMemo, useCallback e hooks customizados.', inicio: '11:00', fim: '12:30', tipo: 'presencial', local: 'Auditório A', speakerIds: ['spk2'], capacidade: 50 },
-        { id: 's3', titulo: 'CSS-in-JS vs Tailwind', desc: 'Painel de discussão sobre o futuro do styling em aplicações modernas.', inicio: '11:00', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', speakerIds: ['spk3'], capacidade: 200 },
-        { id: 's4', titulo: 'State Management 2026', desc: 'Zustand, Redux ou Context API? O que escolher.', inicio: '14:00', fim: '15:30', tipo: 'presencial', local: 'Sala B1', speakerIds: ['spk1', 'spk2'], capacidade: 40 }
-      ] 
-    }
-  ];
-
-  const ev = [...dummy, ...events].find(e => e.id === eventId);
-  if (!ev) { showView('listEvents'); return; }
-
-  document.getElementById('fa-event-title').textContent = ev.titulo;
-  const dateObj = new Date(ev.data);
-  document.getElementById('fa-event-date').textContent = dateObj.toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-  const sessions = ev.sessions || [];
-  const speakers = getSpeakers();
-
-  // Populate Filters if empty
-  const fSpeaker = document.getElementById('filter-speaker');
-  const fRoom = document.getElementById('filter-room');
-  
-  if (fSpeaker.options.length <= 1) {
-    const sessionSpeakerIds = [...new Set(sessions.flatMap(s => s.speakerIds || []))];
-    sessionSpeakerIds.forEach(sid => {
-      const spk = speakers.find(x => x.id === sid);
-      if (spk) fSpeaker.add(new Option(spk.nome, sid));
-    });
-  }
-  if (fRoom.options.length <= 1) {
-    const rooms = [...new Set(sessions.map(s => s.local))];
-    rooms.forEach(r => fRoom.add(new Option(r, r)));
-  }
-
-  // Filter Logic
-  const valType = document.getElementById('filter-type').value;
-  const valSpeaker = document.getElementById('filter-speaker').value;
-  const valRoom = document.getElementById('filter-room').value;
-
-  const filtered = sessions.filter(s => {
-    if (valType !== 'all' && s.tipo !== valType) return false;
-    if (valSpeaker !== 'all' && !(s.speakerIds || []).includes(valSpeaker)) return false;
-    if (valRoom !== 'all' && s.local !== valRoom) return false;
-    return true;
-  });
-
-  // Sort by time
-  filtered.sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-  // Render Grid
-  const grid = document.getElementById('agenda-calendar-grid');
-  if (filtered.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="padding: 60px; text-align: center;">
-        <div class="success-icon" style="background: var(--surface-2); color: var(--text-muted);">🔍</div>
-        <p>Nenhuma sessão corresponde aos filtros aplicados.</p>
-        <button class="btn-text-sm" onclick="document.querySelectorAll('.agenda-filters select').forEach(s => s.value='all'); app.renderFullAgenda('${ev.id}')">Limpar Filtros</button>
-      </div>
-    `;
-    return;
-  }
-
-  // Group by time slots
-  const slots = {};
-  filtered.forEach(s => {
-    if (!slots[s.inicio]) slots[s.inicio] = [];
-    slots[s.inicio].push(s);
-  });
-
-  grid.innerHTML = Object.entries(slots).sort((a,b) => a[0].localeCompare(b[0])).map(([time, sessList]) => `
-    <div class="calendar-row">
-      <div class="calendar-time">${time}</div>
-      <div class="calendar-tracks">
-        ${sessList.map(s => {
-          const isParallel = sessList.length > 1;
-          const sSpks = (s.speakerIds || []).map(sid => {
-            const spk = speakers.find(x => x.id === sid);
-            return spk ? `<span class="speaker-badge" onclick="event.stopPropagation(); app.viewSpeaker('${spk.id}')">${spk.nome}</span>` : '';
-          }).join('');
-          
-          return `
-            <div class="calendar-session-card" onclick="app.editSession('${ev.id}', '${s.id}')">
-              ${isParallel ? '<span class="parallel-indicator">Paralela</span>' : ''}
-              <h3>${s.titulo}</h3>
-              <p>${s.desc}</p>
-              <div class="card-meta-info">
-                <span>${s.tipo === 'online' ? '🔗' : '📍'} ${s.local}</span>
-                <div class="session-speakers" style="margin-top:0;">${sSpks}</div>
-                <span title="Capacidade">👥 ${s.capacidade}</span>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  `).join('');
-}
-
-// Add to window.app for filter cleaning
-window.app.renderFullAgenda = renderFullAgenda;
->>>>>>> 1b44220a63e13055672c6f0a336dba79992075c8
