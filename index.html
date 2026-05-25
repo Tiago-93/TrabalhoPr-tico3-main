@@ -28,7 +28,6 @@
         </div>
       </section>
 
-<<<<<<< HEAD
       <section class="panel panel-right">
         <div class="form-wrapper">
           <div id="reg-success" class="success-state hidden">
@@ -61,7 +60,76 @@
                 <span class="error-msg" id="err-reg-cpw"></span>
               </div>
               <button type="submit" class="btn btn-primary btn-full" id="reg-btn">Criar conta</button>
-=======
+            </form>
+            <p class="login-link">Ja tem conta? <a href="#" id="goLogin">Iniciar sessao</a></p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="view-login" class="view view-auth hidden">
+    <main class="container">
+      <section class="panel panel-left" aria-hidden="true">
+        <div class="brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
+        <div class="panel-content">
+          <h1>Bem-vindo de<br /><span class="highlight">volta!</span></h1>
+          <p class="panel-sub">Aceda a sua conta para continuar a gerir os seus eventos e inscricoes.</p>
+        </div>
+      </section>
+      <section class="panel panel-right">
+        <div class="form-wrapper">
+          <div class="form-header"><h2>Iniciar sessao</h2><p>Introduza as suas credenciais</p></div>
+          <div id="loginAlert" class="login-alert hidden"><span id="loginAlertMsg"></span></div>
+          <form id="loginForm" novalidate>
+            <div class="field-group" id="grp-login-email">
+              <label for="login-email">Email <span class="required">*</span></label>
+              <input type="email" id="login-email" autocomplete="email" />
+              <span class="error-msg" id="err-login-email"></span>
+            </div>
+            <div class="field-group" id="grp-login-pw">
+              <label for="login-pw">Password <span class="required">*</span></label>
+              <input type="password" id="login-pw" autocomplete="current-password" />
+              <span class="error-msg" id="err-login-pw"></span>
+            </div>
+            <div class="login-options">
+              <label class="checkbox-label"><input type="checkbox" id="rememberMe" /><span class="checkbox-custom"></span>Lembrar-me</label>
+              <a href="#" id="forgotPwLink" class="forgot-link">Esqueceu a password?</a>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" id="login-btn">Entrar</button>
+          </form>
+          <p class="login-link">Nao tem conta? <a href="#" id="goRegister">Registar-se</a></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="view-dashboard" class="view view-dash hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-target="dashboard">📋 Dashboard</a>
+        <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
+        <a href="#" class="nav-item" data-target="profile">👤 Perfil</a>
+      </nav>
+      <div class="sidebar-footer"><div class="user-avatar" id="sb-avatar">--</div><div class="user-info"><strong id="sb-name">--</strong><span id="sb-email">--</span></div></div>
+    </aside>
+    <div class="dash-main">
+      <header class="dash-topbar">
+        <div><h1 class="dash-title">Bem-vindo, <span id="dash-name">--</span>!</h1><p class="dash-subtitle">Aqui esta o resumo da sua atividade</p></div>
+        <div class="topbar-actions"><button class="btn btn-primary" id="btn-nav-create">+ Novo Evento</button><button class="btn-logout-top" id="logoutBtnTop">Terminar sessao</button></div>
+      </header>
+      <section class="stats-grid">
+        <div class="stat-card"><span class="stat-value" id="stat-events-count">0</span><span class="stat-label">Eventos</span></div>
+        <div class="stat-card"><span class="stat-value" id="stat-registrations-count">0</span><span class="stat-label">Minhas inscricoes</span></div>
+      </section>
+      <section class="dash-card">
+        <div class="card-header-flex"><h2>Historico de inscricoes</h2><button class="btn btn-secondary" data-target="listEvents">Ver eventos</button></div>
+        <div id="dashboard-registration-history" class="registration-history"></div>
+      </section>
+    </div>
+  </div>
+
     <!-- ═══════════ VIEW: CRIAR EVENTO ═══════════ -->
     <div id="view-create-event" class="view view-dash hidden">
         <aside class="sidebar">
@@ -157,8 +225,7 @@
                             <div class="field-group">
                                 <label>Pré-visualização do Mapa</label>
                                 <div class="map-container" style="height: 150px;">
-                                    <iframe id="ce-map-preview" width="100%" height="100%" style="border:0;"
-                                        allowfullscreen="" loading="lazy" src="about:blank"></iframe>
+                                    <iframe id="ce-map-preview" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" src="about:blank"></iframe>
                                 </div>
                             </div>
 
@@ -204,8 +271,7 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" id="ce-add-session-btn"
-                            style="margin-right: auto;">
+                        <button type="button" class="btn btn-secondary" id="ce-add-session-btn" style="margin-right: auto;">
                             <span>+</span> Adicionar Sessão à Agenda
                         </button>
                         <button type="submit" class="btn btn-primary" id="ce-submit-btn">
@@ -220,47 +286,24 @@
                     </div>
                 </form>
             </div>
-        </div>
+          </div>
+          <div class="form-actions"><button type="button" class="btn btn-secondary" id="ce-add-session-btn">+ Adicionar Sessao</button><button class="btn btn-primary" id="ce-submit-btn">Criar Evento</button></div>
+          <div id="ce-sessions-list" class="sessions-preview-grid hidden"></div>
+        </form>
+      </section>
     </div>
+  </div>
 
-    <!-- ═══════════ VIEW: LISTA DE EVENTOS ═══════════ -->
-    <div id="view-list-events" class="view view-dash hidden">
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-icon">&#128197;</div>
-                <span class="brand-name">EventHub</span>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
-                <a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a>
-                <a href="#" class="nav-item" data-target="participantes">👥 Participantes</a>
-                <a href="#" class="nav-item" data-target="estatisticas">📊 Estatísticas</a>
-            </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <div class="user-avatar" id="sb-avatar-le">--</div>
-                    <div class="user-info">
-                        <strong id="sb-name-le">--</strong>
-                        <span id="sb-email-le">--</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <div class="dash-main">
-            <header class="dash-topbar">
-                <div>
-                    <h1 class="dash-title">Todos os Eventos</h1>
-                    <p class="dash-subtitle">Descubra e participe em eventos incríveis</p>
-                </div>
-                <button class="btn btn-primary" id="btn-nav-create-le">+ Novo Evento</button>
-            </header>
-
-            <div class="events-grid" id="events-grid">
-                <!-- Cards serão gerados por JS -->
-            </div>
-        </div>
+  <div id="view-list-events" class="view view-dash hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
+      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item" data-target="profile">👤 Perfil</a></nav>
+    </aside>
+    <div class="dash-main">
+      <header class="dash-topbar"><div><h1 class="dash-title">Todos os Eventos</h1><p class="dash-subtitle">Escolha um evento para ver detalhes e inscrever-se</p></div><button class="btn btn-primary" id="btn-nav-create-le">+ Novo Evento</button></header>
+      <div class="events-grid" id="events-grid"></div>
     </div>
+  </div>
 
     <!-- ═══════════ VIEW: DETALHES DO EVENTO ═══════════ -->
     <div id="view-event-details" class="view hidden">
@@ -281,8 +324,7 @@
                         <div class="event-quick-info">
                             <span>📅 <span id="ed-data">--</span></span>
                             <span id="ed-local-container">📍 <span id="ed-local">--</span></span>
-                            <span id="ed-link-container" class="hidden">🔗 <a id="ed-link" href="#"
-                                    target="_blank">Abrir Link</a></span>
+                            <span id="ed-link-container" class="hidden">🔗 <a id="ed-link" href="#" target="_blank">Abrir Link</a></span>
                         </div>
                     </div>
                 </div>
@@ -298,10 +340,7 @@
                     <section class="ed-card" id="ed-agenda-section">
                         <div class="card-header-flex">
                             <h3>Agenda do Evento</h3>
-                            <div class="header-actions">
-                                <button class="btn-sm btn-secondary" id="btn-view-full-agenda">Agenda Completa</button>
-                                <button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessão</button>
-                            </div>
+                            <button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessão</button>
                         </div>
                         <div id="ed-sessions-list" class="agenda-timeline">
                             <!-- Sessões serão listadas aqui -->
@@ -312,8 +351,7 @@
                     <section class="ed-card" id="ed-map-section">
                         <h3>Localização</h3>
                         <div class="map-container">
-                            <iframe id="ed-map-frame" width="100%" height="250" style="border:0; border-radius: 12px;"
-                                allowfullscreen="" loading="lazy"></iframe>
+                            <iframe id="ed-map-frame" width="100%" height="250" style="border:0; border-radius: 12px;" allowfullscreen="" loading="lazy"></iframe>
                         </div>
                         <p id="ed-local-full" style="margin-top: 12px; font-weight: 500;"></p>
                     </section>
@@ -322,8 +360,7 @@
                         <h3>Link do Evento</h3>
                         <div class="link-display">
                             <span class="input-icon">🔗</span>
-                            <a id="ed-link-url" href="#" target="_blank"
-                                style="color: var(--brand-light); word-break: break-all;">--</a>
+                            <a id="ed-link-url" href="#" target="_blank" style="color: var(--brand-light); word-break: break-all;">--</a>
                         </div>
                     </section>
                 </div>
@@ -353,61 +390,6 @@
         </div>
     </div>
 
-    <!-- ═══════════ VIEW: AGENDA COMPLETA ═══════════ -->
-    <div id="view-full-agenda" class="view hidden">
-        <div class="full-agenda-container">
-            <nav class="event-details-nav">
-                <button class="btn-back" id="btn-back-from-agenda">← Voltar ao Evento</button>
-                <div class="brand">
-                    <div class="brand-icon">&#128197;</div>
-                    <span class="brand-name">Agenda Completa</span>
-                </div>
-                <button class="btn btn-secondary" id="btn-export-pdf">
-                    <span>📄</span> Exportar PDF
-                </button>
-            </nav>
-
-            <header class="agenda-header">
-                <h1 id="fa-event-title">Nome do Evento</h1>
-                <p id="fa-event-date">Data do Evento</p>
-            </header>
-
-            <section class="agenda-filters">
-                <div class="filter-group">
-                    <label>Dia</label>
-                    <select id="filter-day">
-                        <option value="all">Todos os dias</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Tipo</label>
-                    <select id="filter-type">
-                        <option value="all">Todos os tipos</option>
-                        <option value="presencial">Presencial</option>
-                        <option value="online">Online</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Orador</label>
-                    <select id="filter-speaker">
-                        <option value="all">Todos os oradores</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>Sala/Local</label>
-                    <select id="filter-room">
-                        <option value="all">Todas as salas</option>
-                    </select>
-                </div>
-            </section>
-
-            <div class="agenda-grid-wrapper">
-                <div id="agenda-calendar-grid" class="agenda-calendar-grid">
-                    <!-- Gerado por JS -->
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ═══════════ MODAL: SESSÃO ═══════════ -->
     <div id="sessionModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
@@ -425,8 +407,7 @@
                 </div>
                 <div class="field-group">
                     <label for="sess-desc">Descrição <span class="required">*</span></label>
-                    <textarea id="sess-desc" rows="3" placeholder="O que será abordado nesta sessão?"
-                        required></textarea>
+                    <textarea id="sess-desc" rows="3" placeholder="O que será abordado nesta sessão?" required></textarea>
                 </div>
                 <div class="form-row">
                     <div class="field-group">
@@ -438,17 +419,6 @@
                         <input type="time" id="sess-fim" required />
                     </div>
                 </div>
-                
-                <div class="field-group">
-                    <label>Oradores</label>
-                    <div class="speaker-search-box">
-                        <input type="text" id="sess-speaker-search" placeholder="Procurar orador..." />
-                        <div id="speaker-search-results" class="search-results hidden"></div>
-                    </div>
-                    <div id="sess-speakers-list" class="tags-container"></div>
-                    <button type="button" class="btn-text-sm" id="btn-add-speaker-manual">+ Novo Orador</button>
-                </div>
-
                 <div class="form-row">
                     <div class="field-group">
                         <label for="sess-tipo">Tipo <span class="required">*</span></label>
@@ -468,258 +438,10 @@
                 </div>
                 <div id="sess-error" class="error-msg" style="margin-bottom: 15px; text-align: center;"></div>
                 <button type="submit" class="btn btn-primary btn-full" id="sess-save-btn">Guardar Sessão</button>
->>>>>>> 1b44220a63e13055672c6f0a336dba79992075c8
             </form>
-            <p class="login-link">Ja tem conta? <a href="#" id="goLogin">Iniciar sessao</a></p>
-          </div>
         </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="view-login" class="view view-auth hidden">
-    <main class="container">
-      <section class="panel panel-left" aria-hidden="true">
-        <div class="brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-        <div class="panel-content">
-          <h1>Bem-vindo de<br /><span class="highlight">volta!</span></h1>
-          <p class="panel-sub">Aceda a sua conta para continuar a gerir os seus eventos e inscricoes.</p>
-        </div>
-      </section>
-      <section class="panel panel-right">
-        <div class="form-wrapper">
-          <div class="form-header"><h2>Iniciar sessao</h2><p>Introduza as suas credenciais</p></div>
-          <div id="loginAlert" class="login-alert hidden"><span id="loginAlertMsg"></span></div>
-          <form id="loginForm" novalidate>
-            <div class="field-group" id="grp-login-email">
-              <label for="login-email">Email <span class="required">*</span></label>
-              <input type="email" id="login-email" autocomplete="email" />
-              <span class="error-msg" id="err-login-email"></span>
-            </div>
-            <div class="field-group" id="grp-login-pw">
-              <label for="login-pw">Password <span class="required">*</span></label>
-              <input type="password" id="login-pw" autocomplete="current-password" />
-              <span class="error-msg" id="err-login-pw"></span>
-            </div>
-            <div class="login-options">
-              <label class="checkbox-label"><input type="checkbox" id="rememberMe" /><span class="checkbox-custom"></span>Lembrar-me</label>
-              <a href="#" id="forgotPwLink" class="forgot-link">Esqueceu a password?</a>
-            </div>
-            <button type="submit" class="btn btn-primary btn-full" id="login-btn">Entrar</button>
-          </form>
-          <p class="login-link">Nao tem conta? <a href="#" id="goRegister">Registar-se</a></p>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="view-dashboard" class="view view-dash hidden">
-    <aside class="sidebar">
-      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav">
-        <a href="#" class="nav-item active" data-target="dashboard">📋 Dashboard</a>
-        <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
-        <a href="#" class="nav-item" data-target="profile">👤 Perfil</a>
-      </nav>
-      <div class="sidebar-footer"><div class="user-avatar" id="sb-avatar">--</div><div class="user-info"><strong id="sb-name">--</strong><span id="sb-email">--</span></div></div>
-    </aside>
-    <div class="dash-main">
-      <header class="dash-topbar">
-        <div><h1 class="dash-title">Bem-vindo, <span id="dash-name">--</span>!</h1><p class="dash-subtitle">Aqui esta o resumo da sua atividade</p></div>
-        <div class="topbar-actions"><button class="btn btn-primary" id="btn-nav-create">+ Novo Evento</button><button class="btn-logout-top" id="logoutBtnTop">Terminar sessao</button></div>
-      </header>
-      <section class="stats-grid">
-        <div class="stat-card"><span class="stat-value" id="stat-events-count">0</span><span class="stat-label">Eventos</span></div>
-        <div class="stat-card"><span class="stat-value" id="stat-registrations-count">0</span><span class="stat-label">Minhas inscricoes</span></div>
-      </section>
-      <section class="dash-card">
-        <div class="card-header-flex"><h2>Historico de inscricoes</h2><button class="btn btn-secondary" data-target="listEvents">Ver eventos</button></div>
-        <div id="dashboard-registration-history" class="registration-history"></div>
-      </section>
     </div>
-  </div>
-
-<<<<<<< HEAD
-  <div id="view-create-event" class="view view-dash hidden">
-    <aside class="sidebar">
-      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav">
-        <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
-        <a href="#" class="nav-item active" data-target="createEvent">➕ Novo Evento</a>
-        <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
-      </nav>
-    </aside>
-    <div class="dash-main">
-      <header class="dash-topbar"><div><h1 class="dash-title">Criar Novo Evento</h1><p class="dash-subtitle">Preencha os detalhes do evento</p></div><button class="btn-logout-top" id="btn-cancel-create">Cancelar</button></header>
-      <section class="dash-card">
-        <div id="ce-success" class="success-state hidden">
-          <div class="success-icon">✔</div><h2>Evento criado com sucesso!</h2><p id="ce-event-url"></p>
-          <button class="btn btn-primary" id="ce-go-dash">Voltar ao Dashboard</button>
-        </div>
-        <form id="createEventForm" class="event-form" novalidate>
-          <div class="form-grid">
-            <div>
-              <div class="field-group" id="grp-ce-titulo"><label>Titulo <span class="required">*</span></label><input id="ce-titulo" /><span class="error-msg" id="err-ce-titulo"></span></div>
-              <div class="field-group" id="grp-ce-desc"><label>Descricao <span class="required">*</span></label><textarea id="ce-desc" rows="4"></textarea><span class="error-msg" id="err-ce-desc"></span></div>
-              <div class="form-row"><div class="field-group" id="grp-ce-data"><label>Data <span class="required">*</span></label><input type="datetime-local" id="ce-data" /><span class="error-msg" id="err-ce-data"></span></div><div class="field-group" id="grp-ce-capacidade"><label>Capacidade <span class="required">*</span></label><input type="number" id="ce-capacidade" min="1" /><span class="error-msg" id="err-ce-capacidade"></span></div></div>
-            </div>
-            <div>
-              <div class="field-group" id="grp-ce-local"><label>Localizacao <span class="required">*</span></label><input id="ce-local" /><span class="error-msg" id="err-ce-local"></span></div>
-              <div class="field-group" id="grp-ce-link"><label>Link</label><input type="url" id="ce-link" /><span class="error-msg" id="err-ce-link"></span></div>
-              <div class="field-group"><label>Formato</label><select id="ce-formato"><option value="presencial">Presencial</option><option value="online">Online</option><option value="hibrido">Hibrido</option></select></div>
-              <div class="field-group"><label>Estado</label><div class="radio-group"><label><input type="radio" name="ce-estado" value="rascunho" checked /> Rascunho</label><label><input type="radio" name="ce-estado" value="publicado" /> Publicado</label></div></div>
-            </div>
-          </div>
-          <div class="form-actions"><button type="button" class="btn btn-secondary" id="ce-add-session-btn">+ Adicionar Sessao</button><button class="btn btn-primary" id="ce-submit-btn">Criar Evento</button></div>
-          <div id="ce-sessions-list" class="sessions-preview-grid hidden"></div>
-        </form>
-      </section>
-    </div>
-  </div>
-
-  <div id="view-list-events" class="view view-dash hidden">
-    <aside class="sidebar">
-      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item" data-target="profile">👤 Perfil</a></nav>
-    </aside>
-    <div class="dash-main">
-      <header class="dash-topbar"><div><h1 class="dash-title">Todos os Eventos</h1><p class="dash-subtitle">Escolha um evento para ver detalhes e inscrever-se</p></div><button class="btn btn-primary" id="btn-nav-create-le">+ Novo Evento</button></header>
-      <div class="events-grid" id="events-grid"></div>
-    </div>
-  </div>
-
-  <div id="view-event-details" class="view hidden">
-    <div class="event-details-container">
-      <nav class="event-details-nav"><button class="btn-back" id="btn-back-from-details">← Voltar</button><div class="brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div></nav>
-      <div class="event-hero" id="ed-hero"><div class="event-hero-overlay"><div class="event-hero-content"><span class="badge badge--active" id="ed-status">Publicado</span><h1 id="ed-titulo"></h1><div class="event-quick-info"><span id="ed-data"></span><span id="ed-local"></span></div></div></div></div>
-      <div class="event-content-grid">
-        <main class="event-main-info">
-          <section class="ed-card"><h3>Sobre o Evento</h3><p id="ed-desc"></p></section>
-          <section class="ed-card"><div class="card-header-flex"><h3>Agenda do Evento</h3><button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessao</button></div><div id="ed-sessions-list" class="agenda-timeline"></div></section>
-          <section class="ed-card hidden" id="registration-confirmation">
-            <h3>Inscricao confirmada</h3>
-            <p>A sua presenca foi confirmada. Guarde o numero de referencia para check-in.</p>
-            <div class="reference-box"><span>Referencia</span><strong id="reg-reference">--</strong></div>
-            <div class="email-confirmation"><strong>Email automatico enviado</strong><span id="reg-email-sent">--</span></div>
-          </section>
-        </main>
-        <aside class="event-side-info">
-          <div class="ed-registration-card">
-            <div class="ed-reg-header"><span class="ed-price">Gratuito</span><span class="ed-capacity">Vagas: <strong id="ed-vagas">--</strong>/<strong id="ed-capac">--</strong></span></div>
-            <button class="btn btn-primary btn-full" id="btn-register-event">Inscrever-me Agora</button>
-            <button class="btn btn-secondary btn-full hidden" id="btn-cancel-registration">Cancelar inscricao</button>
-            <p class="ed-disclaimer" id="ed-registration-msg">Login obrigatorio para confirmar a inscricao.</p>
-          </div>
-          <div class="ed-organizer-card"><h4>Organizador</h4><div class="ed-org-info"><div class="avatar" id="ed-org-avatar">??</div><div><strong id="ed-org-name">--</strong><span>Organizador Verificado</span></div></div></div>
-        </aside>
-      </div>
-    </div>
-  </div>
-
-  <div id="view-profile" class="view view-dash hidden">
-    <aside class="sidebar">
-      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item active" data-target="profile">👤 Perfil</a></nav>
-    </aside>
-    <div class="dash-main">
-      <header class="dash-topbar"><div><h1 class="dash-title">Perfil</h1><p class="dash-subtitle">Historico de inscricoes no perfil do utilizador</p></div></header>
-      <section class="dash-card"><div id="profile-registration-history" class="registration-history"></div></section>
-    </div>
-  </div>
-
-  <div id="sessionModal" class="modal-overlay hidden">
-    <div class="modal modal-lg">
-      <button class="modal-close" id="closeSessionModal">x</button>
-      <div class="modal-header"><h3 id="sessionModalTitle">Adicionar Sessao</h3></div>
-      <form id="sessionForm">
-        <input type="hidden" id="sess-id" />
-        <div class="field-group"><label>Titulo</label><input id="sess-titulo" required /></div>
-        <div class="field-group"><label>Descricao</label><textarea id="sess-desc" rows="3" required></textarea></div>
-        <div class="form-row"><div class="field-group"><label>Inicio</label><input type="time" id="sess-inicio" required /></div><div class="field-group"><label>Fim</label><input type="time" id="sess-fim" required /></div></div>
-        <div class="form-row"><div class="field-group"><label>Tipo</label><select id="sess-tipo"><option value="presencial">Presencial</option><option value="online">Online</option></select></div><div class="field-group"><label>Capacidade</label><input type="number" id="sess-capacidade" min="1" required /></div></div>
-        <div class="field-group"><label id="lbl-sess-local">Sala / Local</label><input id="sess-local" required /></div>
-        <div id="sess-error" class="error-msg"></div>
-        <button class="btn btn-primary btn-full">Guardar Sessao</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="recoverModal" class="modal-overlay hidden">
-    <div class="modal">
-      <button class="modal-close" id="closeModal">x</button>
-      <div id="recover-form-div"><div class="modal-header"><h3>Recuperar Password</h3></div><div class="field-group" id="grp-recover-email"><label>Email</label><input type="email" id="recoverEmail" /><span class="error-msg" id="err-recover-email"></span></div><button class="btn btn-primary btn-full" id="sendRecoverBtn">Enviar Link</button></div>
-      <div id="recover-success-div" class="hidden"><div class="success-icon">✔</div><h3>Email enviado!</h3><p>Enviamos as instrucoes para <strong id="recoverSentTo"></strong></p><button class="btn btn-primary btn-full" id="closeRecoverSuccess">Voltar ao Login</button></div>
-    </div>
-  </div>
 
   <script src="app.js"></script>
-=======
-    <!-- ═══════════ MODAL: NOVO ORADOR ═══════════ -->
-    <div id="newSpeakerModal" class="modal-overlay hidden" role="dialog">
-        <div class="modal">
-            <button class="modal-close" id="closeNewSpeakerModal">✕</button>
-            <div class="modal-header">
-                <h3>Novo Orador</h3>
-            </div>
-            <form id="newSpeakerForm">
-                <div class="field-group">
-                    <label>Nome Completo</label>
-                    <input type="text" id="spk-nome" required />
-                </div>
-                <div class="field-group">
-                    <label>Bio</label>
-                    <textarea id="spk-bio" rows="3"></textarea>
-                </div>
-                <div class="field-group">
-                    <label>Contacto / Social</label>
-                    <input type="text" id="spk-contacto" />
-                </div>
-                <div class="field-group">
-                    <label>URL da Foto</label>
-                    <input type="url" id="spk-foto" />
-                </div>
-                <button type="submit" class="btn btn-primary btn-full">Criar Orador</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- ═══════════ MODAL: PERFIL ORADOR ═══════════ -->
-    <div id="speakerProfileModal" class="modal-overlay hidden" role="dialog">
-        <div class="modal modal-lg">
-            <button class="modal-close" id="closeProfileModal">✕</button>
-            <div id="profile-content"></div>
-        </div>
-    </div>
-
-    <!-- ═══════════ MODAL: RECUPERAÇÃO ═══════════ -->
-    <div id="recoverModal" class="modal-overlay hidden" role="dialog">
-        <div class="modal">
-            <button class="modal-close" id="closeModal">✕</button>
-            <div id="recover-form-div">
-                <div class="modal-header">
-                    <h3>Recuperar Password</h3>
-                    <p>Introduza o seu email para receber instruções</p>
-                </div>
-                <div class="field-group" id="grp-recover-email">
-                    <label>Email</label>
-                    <input type="email" id="recoverEmail" required />
-                    <span class="error-msg" id="err-recover-email"></span>
-                </div>
-                <button class="btn btn-primary btn-full" id="sendRecoverBtn">
-                    <span class="btn-text">Enviar Link</span>
-                    <span class="btn-spinner hidden"></span>
-                </button>
-            </div>
-            <div id="recover-success-div" class="hidden">
-                <div class="success-icon">✔</div>
-                <h3>Email enviado!</h3>
-                <p>Enviámos as instruções para <strong id="recoverSentTo"></strong></p>
-                <button class="btn btn-primary btn-full" id="closeRecoverSuccess">Voltar ao Login</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
->>>>>>> 1b44220a63e13055672c6f0a336dba79992075c8
 </body>
 </html>
