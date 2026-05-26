@@ -318,7 +318,6 @@ function initEventLogic() {
 
   document.getElementById('btn-register-event')?.addEventListener('click', handleEventRegistration);
   document.getElementById('btn-cancel-registration')?.addEventListener('click', handleCancelRegistration);
-<<<<<<< HEAD
   document.getElementById('stats-period-filter')?.addEventListener('change', () => {
     const eventId = document.getElementById('ed-hero').dataset.eventId;
     const ev = getEvents().find((item) => item.id === eventId);
@@ -331,8 +330,6 @@ function initEventLogic() {
   });
   document.getElementById('btn-export-stats-pdf')?.addEventListener('click', exportEventStatsPdf);
   document.getElementById('btn-export-stats-excel')?.addEventListener('click', exportEventStatsExcel);
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
 }
 
 function populateEventsGrid() {
@@ -388,10 +385,7 @@ function renderEventDetails(id) {
 
   renderAgenda(ev);
   renderRegistrationState(ev);
-<<<<<<< HEAD
   renderEventStats(ev);
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
 }
 
 function renderAgenda(event) {
@@ -564,10 +558,7 @@ function handleSessionFeedbackSubmit(e, eventId, sessionId) {
   saveFeedback(next);
   alert(`Feedback enviado. O organizador recebeu uma notificacao sobre "${entry.sessionTitle}".`);
   renderAgenda(ev);
-<<<<<<< HEAD
   renderEventStats(ev);
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
 }
 
 function renderOrganizerFeedback(event) {
@@ -598,7 +589,6 @@ function renderOrganizerFeedback(event) {
   `).join('');
 }
 
-<<<<<<< HEAD
 function renderEventStats(event) {
   const section = document.getElementById('event-stats-section');
   const session = getSession();
@@ -754,9 +744,6 @@ function exportEventStatsPdf() {
   }
   window.print();
 }
-
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
 function getEventStatus(ev) {
   if (ev.estado === 'rascunho') return { cls: 'pending', label: 'Rascunho' };
   if (new Date(ev.data) < new Date()) return { cls: 'done', label: 'Concluido' };
@@ -813,10 +800,7 @@ async function handleEventRegistration() {
   saveRegistrations([...getRegistrations(), registration]);
   renderRegistrationState(ev);
   renderAgenda(ev);
-<<<<<<< HEAD
   renderEventStats(ev);
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
   updateStats();
 }
 
@@ -830,10 +814,7 @@ function handleCancelRegistration() {
   saveRegistrations(regs);
   renderRegistrationState(ev);
   renderAgenda(ev);
-<<<<<<< HEAD
   renderEventStats(ev);
-=======
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
   updateStats();
 }
 
@@ -1065,8 +1046,4 @@ window.app = {
       renderTempSessions();
     }
   }
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 3c326c4e98d6d8c28659034be7fedf3f856c32fc
