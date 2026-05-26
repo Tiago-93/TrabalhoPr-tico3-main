@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Iniciar servidor Python",
+            "type": "shell",
+            "command": "python",
+            "args": ["-m", "http.server", "8080"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Serving HTTP",
+                    "endsPattern": "^$"
+                }
+            },
+            "presentation": {
+                "reveal": "silent"
+            }
+        }
+    ]
+}

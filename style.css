@@ -870,3 +870,180 @@ input[type="radio"] {
     text-align: center;
     padding: 20px;
 }
+
+/* ── Agenda filter bar ── */
+.agenda-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding: .75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.agenda-filter-bar select {
+  padding: .35rem .7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+/* ── Parallel session indicator ── */
+.session-parallel { border-left-color: var(--warning) !important; }
+.parallel-badge {
+  display: inline-block;
+  padding: 0 .4rem;
+  background: rgba(245,158,11,.15);
+  color: var(--warning);
+  border-radius: 4px;
+  font-size: .7rem;
+  font-weight: 600;
+  vertical-align: middle;
+  margin-left: .3rem;
+}
+
+/* ── Session actions (organizer) ── */
+.session-actions { display: flex; gap: .4rem; margin-top: .5rem; }
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-danger:hover { background: var(--error-bg); }
+
+/* ── Speaker chips in agenda ── */
+.session-speakers { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+.speaker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .6rem;
+  background: rgba(108,99,255,.12);
+  border: 1px solid rgba(108,99,255,.3);
+  border-radius: 20px;
+  font-size: .78rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s;
+}
+.speaker-chip:hover { background: rgba(108,99,255,.25); }
+.speaker-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
+.speaker-avatar-initials {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Speaker chips in session modal ── */
+.speaker-chips {
+  min-height: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: .5rem;
+}
+.speaker-chip-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .55rem;
+  background: rgba(108,99,255,.15);
+  border: 1px solid rgba(108,99,255,.35);
+  border-radius: 20px;
+  font-size: .8rem;
+  color: var(--text);
+}
+.speaker-chip-selected button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+}
+.speaker-chip-selected button:hover { color: var(--error); }
+.speaker-empty-hint { color: var(--text-muted); font-size: .8rem; }
+
+/* ── Speaker search ── */
+.speaker-search-row { display: flex; gap: .5rem; align-items: center; }
+.speaker-search-row input {
+  flex: 1;
+  padding: .45rem .75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: .875rem;
+}
+.speaker-results {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: .25rem;
+  background: var(--surface-2);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.speaker-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .5rem .75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .875rem;
+}
+.speaker-result-item:last-child { border-bottom: none; }
+.speaker-no-results { padding: .75rem; color: var(--text-muted); font-size: .875rem; }
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--brand);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  padding: 0;
+}
+
+/* ── Speaker profile modal ── */
+.speaker-profile { padding: .25rem 0; }
+.speaker-profile-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+.speaker-profile-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.speaker-avatar-lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.speaker-bio { color: var(--text-muted); font-size: .9rem; margin-bottom: 1rem; line-height: 1.5; }
+.speaker-contact { color: var(--text-muted); font-size: .85rem; margin-top: .25rem; }
+.speaker-profile h4 { margin-bottom: .5rem; font-size: .95rem; }
+.speaker-sessions-list { list-style: none; padding: 0; margin: 0; }
+.speaker-sessions-list li {
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .875rem;
+  color: var(--text);
+}
+.speaker-sessions-list li:last-child { border-bottom: none; }

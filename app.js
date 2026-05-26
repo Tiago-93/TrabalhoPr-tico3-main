@@ -5,6 +5,7 @@ const SESSION_KEY = 'eventhub_session';
 const EVENTS_KEY = 'eventhub_events';
 const REGISTRATIONS_KEY = 'eventhub_registrations';
 const FEEDBACK_KEY = 'eventhub_session_feedback';
+const SPEAKERS_KEY = 'eventhub_speakers';
 
 const views = {
   register: document.getElementById('view-register'),
@@ -17,6 +18,7 @@ const views = {
 };
 
 let tempSessions = [];
+let tempSessionOradores = [];
 let editingEventId = null;
 
 const getUsers = () => JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
@@ -27,19 +29,31 @@ const getRegistrations = () => JSON.parse(localStorage.getItem(REGISTRATIONS_KEY
 const saveRegistrations = (regs) => localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(regs));
 const getFeedback = () => JSON.parse(localStorage.getItem(FEEDBACK_KEY) || '[]');
 const saveFeedback = (feedback) => localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback));
+const getSpeakers = () => JSON.parse(localStorage.getItem(SPEAKERS_KEY) || '[]');
+const saveSpeakers = (speakers) => localStorage.setItem(SPEAKERS_KEY, JSON.stringify(speakers));
 const getSession = () => JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 document.addEventListener('DOMContentLoaded', () => {
   seedEvents();
+  seedSpeakers();
   initRouting();
   initValidation();
   initAuth();
   initEventLogic();
   initSessionModal();
+  initSpeakerModal();
   initRecovery();
   checkSession();
 });
+
+function seedSpeakers() {
+  if (getSpeakers().length > 0) return;
+  saveSpeakers([
+    { id: 'spk1', nome: 'Ana Costa', bio: 'Especialista em React com 8 anos de experiencia em projetos de grande escala.', foto: '', contacto: 'ana.costa@techdev.pt' },
+    { id: 'spk2', nome: 'Bruno Ferreira', bio: 'UX Designer e investigador de usabilidade com foco em acessibilidade.', foto: '', contacto: 'bruno@uxlab.pt' }
+  ]);
+}
 
 function hashPassword(pw) {
   let hash = 0;
@@ -63,8 +77,8 @@ function seedEvents() {
       organizer: 'admin',
       imgPreview: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&q=80',
       sessions: [
-        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Boas-vindas e apresentacao dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'online', local: 'Zoom Room 1', capacidade: 50 },
-        { id: 's2', titulo: 'Hooks Avancados', desc: 'Exploracao de useMemo, useCallback e hooks customizados.', inicio: '11:15', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', capacidade: 50 }
+        { id: 's1', titulo: 'Abertura e Keynote', desc: 'Boas-vindas e apresentacao dos temas principais.', inicio: '10:00', fim: '11:00', tipo: 'online', local: 'Zoom Room 1', capacidade: 50, oradores: ['spk1'] },
+        { id: 's2', titulo: 'Hooks Avancados', desc: 'Exploracao de useMemo, useCallback e hooks customizados.', inicio: '11:15', fim: '12:30', tipo: 'online', local: 'Zoom Room 1', capacidade: 50, oradores: ['spk1', 'spk2'] }
       ]
     },
     {
@@ -330,6 +344,14 @@ function initEventLogic() {
   });
   document.getElementById('btn-export-stats-pdf')?.addEventListener('click', exportEventStatsPdf);
   document.getElementById('btn-export-stats-excel')?.addEventListener('click', exportEventStatsExcel);
+  document.getElementById('btn-export-agenda-pdf')?.addEventListener('click', exportAgendaPdf);
+  ['af-tipo', 'af-orador', 'af-sala'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('change', () => {
+      const eventId = document.getElementById('ed-hero').dataset.eventId;
+      const ev = getEvents().find((item) => item.id === eventId);
+      if (ev) renderAgenda(ev);
+    });
+  });
 }
 
 function populateEventsGrid() {
@@ -391,30 +413,220 @@ function renderEventDetails(id) {
 function renderAgenda(event) {
   const list = document.getElementById('ed-sessions-list');
   renderOrganizerFeedback(event);
+  renderAgendaFilters(event);
+
   if (!event.sessions || event.sessions.length === 0) {
     list.innerHTML = '<p class="empty-msg">Nenhuma sessao programada.</p>';
     return;
   }
 
-  list.innerHTML = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio)).map((s) => {
+  const tipoFilter = document.getElementById('af-tipo')?.value || '';
+  const oradorFilter = document.getElementById('af-orador')?.value || '';
+  const salaFilter = document.getElementById('af-sala')?.value || '';
+
+  let sessions = [...event.sessions].sort((a, b) => a.inicio.localeCompare(b.inicio));
+  if (tipoFilter) sessions = sessions.filter((s) => s.tipo === tipoFilter);
+  if (oradorFilter) sessions = sessions.filter((s) => (s.oradores || []).includes(oradorFilter));
+  if (salaFilter) sessions = sessions.filter((s) => s.local === salaFilter);
+
+  const parallelIds = new Set();
+  const all = event.sessions;
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      if (all[i].inicio < all[j].fim && all[i].fim > all[j].inicio) {
+        parallelIds.add(all[i].id);
+        parallelIds.add(all[j].id);
+      }
+    }
+  }
+
+  const isOrganizer = event.organizer === getSession()?.userId;
+  const allSpeakers = getSpeakers();
+
+  list.innerHTML = sessions.map((s) => {
     const stats = getSessionFeedbackStats(event.id, s.id);
     const feedbackBlock = renderSessionFeedbackBlock(event, s, stats);
+    const sessionSpeakers = (s.oradores || []).map((id) => allSpeakers.find((sp) => sp.id === id)).filter(Boolean);
+    const speakersHtml = sessionSpeakers.length
+      ? `<div class="session-speakers">${sessionSpeakers.map((sp) => `
+          <button type="button" class="speaker-chip" onclick="app.openSpeakerProfile('${sp.id}', '${event.id}')">
+            ${sp.foto ? `<img src="${escapeHtml(sp.foto)}" alt="${escapeHtml(sp.nome)}" class="speaker-avatar" />` : `<span class="speaker-avatar-initials">${escapeHtml(sp.nome.split(' ').map((n) => n[0]).slice(0, 2).join(''))}</span>`}
+            <span>${escapeHtml(sp.nome)}</span>
+          </button>`).join('')}</div>`
+      : '';
+    const actionsHtml = isOrganizer
+      ? `<div class="session-actions">
+          <button type="button" class="btn-sm btn-secondary" onclick="app.editSession('${event.id}', '${s.id}')">Editar</button>
+          <button type="button" class="btn-sm btn-danger" onclick="app.deleteSession('${event.id}', '${s.id}')">Eliminar</button>
+        </div>`
+      : '';
     return `
-    <div class="session-item">
+    <div class="session-item${parallelIds.has(s.id) ? ' session-parallel' : ''}">
       <div class="session-time">${s.inicio}<br>${s.fim}</div>
       <div class="session-info">
-        <h4>${escapeHtml(s.titulo)}</h4>
+        <h4>${escapeHtml(s.titulo)}${parallelIds.has(s.id) ? ' <span class="parallel-badge">Paralela</span>' : ''}</h4>
         <p>${escapeHtml(s.desc)}</p>
-        <div class="session-meta"><span>${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</span><span>👥 Max: ${s.capacidade}</span></div>
+        <div class="session-meta">
+          <span>${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</span>
+          <span>👥 ${s.capacidade} vagas</span>
+        </div>
+        ${speakersHtml}
+        ${actionsHtml}
         <div class="session-feedback-summary">
           <strong>${stats.average ? `${stats.average.toFixed(1)} / 5` : 'Sem classificacoes'}</strong>
           <span>${renderStars(stats.average || 0)} ${stats.count} feedback${stats.count === 1 ? '' : 's'}</span>
         </div>
         ${feedbackBlock}
       </div>
-    </div>
-  `;
-  }).join('');
+    </div>`;
+  }).join('') || '<p class="empty-msg">Nenhuma sessao para os filtros selecionados.</p>';
+}
+
+function renderAgendaFilters(event) {
+  const bar = document.getElementById('agenda-filter-bar');
+  if (!bar) return;
+  const sessions = event.sessions || [];
+  bar.classList.toggle('hidden', sessions.length === 0);
+  if (sessions.length === 0) return;
+
+  const allSpeakers = getSpeakers();
+  const oradorSel = document.getElementById('af-orador');
+  const salaSel = document.getElementById('af-sala');
+  const curOrador = oradorSel?.value || '';
+  const curSala = salaSel?.value || '';
+
+  const oradoresIds = [...new Set(sessions.flatMap((s) => s.oradores || []))];
+  oradorSel.innerHTML = '<option value="">Todos os oradores</option>' +
+    oradoresIds.map((id) => {
+      const sp = allSpeakers.find((s) => s.id === id);
+      return sp ? `<option value="${id}" ${curOrador === id ? 'selected' : ''}>${escapeHtml(sp.nome)}</option>` : '';
+    }).join('');
+
+  const salas = [...new Set(sessions.map((s) => s.local))];
+  salaSel.innerHTML = '<option value="">Todas as salas</option>' +
+    salas.map((sala) => `<option value="${escapeHtml(sala)}" ${curSala === sala ? 'selected' : ''}>${escapeHtml(sala)}</option>`).join('');
+}
+
+function exportAgendaPdf() {
+  window.print();
+}
+
+function initSpeakerModal() {
+  document.getElementById('closeSpeakerModal')?.addEventListener('click', () => document.getElementById('speakerModal').classList.add('hidden'));
+  document.getElementById('speakerForm')?.addEventListener('submit', handleSpeakerSubmit);
+  document.getElementById('closeSpeakerProfileModal')?.addEventListener('click', () => document.getElementById('speakerProfileModal').classList.add('hidden'));
+}
+
+function openSpeakerModal(speakerId = null) {
+  const form = document.getElementById('speakerForm');
+  form.reset();
+  document.getElementById('spk-error').textContent = '';
+  document.getElementById('speakerModalTitle').textContent = speakerId ? 'Editar Orador' : 'Criar Orador';
+  if (speakerId) {
+    const sp = getSpeakers().find((s) => s.id === speakerId);
+    if (sp) {
+      document.getElementById('spk-id').value = sp.id;
+      document.getElementById('spk-nome').value = sp.nome;
+      document.getElementById('spk-bio').value = sp.bio || '';
+      document.getElementById('spk-foto').value = sp.foto || '';
+      document.getElementById('spk-contacto').value = sp.contacto || '';
+    }
+  } else {
+    document.getElementById('spk-id').value = '';
+    const searchVal = document.getElementById('sess-orador-search')?.value.trim() || '';
+    if (searchVal) document.getElementById('spk-nome').value = searchVal;
+  }
+  document.getElementById('speakerModal').classList.remove('hidden');
+}
+
+function handleSpeakerSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('spk-id').value || Math.random().toString(36).slice(2, 9);
+  const nome = document.getElementById('spk-nome').value.trim();
+  const bio = document.getElementById('spk-bio').value.trim();
+  const foto = document.getElementById('spk-foto').value.trim();
+  const contacto = document.getElementById('spk-contacto').value.trim();
+  if (!nome) { document.getElementById('spk-error').textContent = 'Nome obrigatorio.'; return; }
+
+  const speakers = getSpeakers();
+  const isEdit = speakers.some((s) => s.id === id);
+  const newSpk = { id, nome, bio, foto, contacto };
+  saveSpeakers(isEdit ? speakers.map((s) => s.id === id ? newSpk : s) : [...speakers, newSpk]);
+  if (!isEdit) addOradorToSession(id);
+
+  document.getElementById('speakerModal').classList.add('hidden');
+  renderSessionOradores();
+  const searchEl = document.getElementById('sess-orador-search');
+  if (searchEl) { searchEl.value = ''; }
+  document.getElementById('sess-orador-results')?.classList.add('hidden');
+}
+
+function handleOradorSearch(e) {
+  const query = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('sess-orador-results');
+  if (!query) { resultsEl.classList.add('hidden'); resultsEl.innerHTML = ''; return; }
+  const results = getSpeakers().filter((sp) => sp.nome.toLowerCase().includes(query) && !tempSessionOradores.includes(sp.id));
+  if (results.length === 0) {
+    resultsEl.innerHTML = `<div class="speaker-no-results">Nenhum orador encontrado. <button type="button" class="btn-link" onclick="app.openSpeakerModal()">Criar novo</button></div>`;
+  } else {
+    resultsEl.innerHTML = results.map((sp) => `
+      <div class="speaker-result-item">
+        <span>${escapeHtml(sp.nome)}</span>
+        <button type="button" class="btn-sm btn-primary" onclick="app.addOrador('${sp.id}')">Associar</button>
+      </div>`).join('');
+  }
+  resultsEl.classList.remove('hidden');
+}
+
+function addOradorToSession(speakerId) {
+  if (!tempSessionOradores.includes(speakerId)) tempSessionOradores.push(speakerId);
+  renderSessionOradores();
+  const searchEl = document.getElementById('sess-orador-search');
+  if (searchEl) searchEl.value = '';
+  document.getElementById('sess-orador-results')?.classList.add('hidden');
+}
+
+function removeOradorFromSession(speakerId) {
+  tempSessionOradores = tempSessionOradores.filter((id) => id !== speakerId);
+  renderSessionOradores();
+}
+
+function renderSessionOradores() {
+  const chips = document.getElementById('sess-oradores-chips');
+  if (!chips) return;
+  const selected = tempSessionOradores.map((id) => getSpeakers().find((s) => s.id === id)).filter(Boolean);
+  chips.innerHTML = selected.length
+    ? selected.map((sp) => `
+        <div class="speaker-chip-selected">
+          <span>${escapeHtml(sp.nome)}</span>
+          <button type="button" onclick="app.removeOrador('${sp.id}')" title="Remover">×</button>
+        </div>`).join('')
+    : '<span class="speaker-empty-hint">Nenhum orador associado</span>';
+}
+
+function openSpeakerProfile(speakerId, eventId) {
+  const modal = document.getElementById('speakerProfileModal');
+  const content = document.getElementById('speaker-profile-content');
+  const sp = getSpeakers().find((s) => s.id === speakerId);
+  if (!sp) return;
+  const ev = getEvents().find((e) => e.id === eventId);
+  const sessions = ev ? (ev.sessions || []).filter((s) => (s.oradores || []).includes(speakerId)) : [];
+  content.innerHTML = `
+    <div class="speaker-profile">
+      <div class="speaker-profile-header">
+        ${sp.foto ? `<img src="${escapeHtml(sp.foto)}" alt="${escapeHtml(sp.nome)}" class="speaker-profile-photo" />` : `<div class="speaker-avatar-lg">${escapeHtml(sp.nome.split(' ').map((n) => n[0]).slice(0, 2).join(''))}</div>`}
+        <div>
+          <h3>${escapeHtml(sp.nome)}</h3>
+          ${sp.contacto ? `<p class="speaker-contact">✉ ${escapeHtml(sp.contacto)}</p>` : ''}
+        </div>
+      </div>
+      ${sp.bio ? `<p class="speaker-bio">${escapeHtml(sp.bio)}</p>` : ''}
+      <h4>Sessoes neste evento (${sessions.length})</h4>
+      ${sessions.length
+        ? `<ul class="speaker-sessions-list">${sessions.map((s) => `<li><strong>${escapeHtml(s.titulo)}</strong> — ${s.inicio}–${s.fim} | ${s.tipo === 'online' ? '🔗' : '📍'} ${escapeHtml(s.local)}</li>`).join('')}</ul>`
+        : '<p class="empty-msg">Sem sessoes neste evento.</p>'}
+    </div>`;
+  modal.classList.remove('hidden');
 }
 
 function renderSessionFeedbackBlock(event, session, stats) {
@@ -892,13 +1104,17 @@ function initSessionModal() {
     document.getElementById('lbl-sess-local').textContent = e.target.value === 'online' ? 'Link da Reuniao' : 'Sala / Local';
   });
   document.getElementById('sessionForm')?.addEventListener('submit', handleSessionSubmit);
+  document.getElementById('sess-orador-search')?.addEventListener('input', handleOradorSearch);
+  document.getElementById('btn-novo-orador')?.addEventListener('click', () => openSpeakerModal());
 }
 
 function openSessionModal(eventId = null, sessionId = null) {
   const form = document.getElementById('sessionForm');
   form.reset();
   document.getElementById('sess-error').textContent = '';
+  document.getElementById('sess-orador-results')?.classList.add('hidden');
   editingEventId = eventId;
+  tempSessionOradores = [];
 
   if (sessionId) {
     const sessions = eventId ? getEvents().find((e) => e.id === eventId)?.sessions || [] : tempSessions;
@@ -912,10 +1128,12 @@ function openSessionModal(eventId = null, sessionId = null) {
       document.getElementById('sess-tipo').value = sess.tipo;
       document.getElementById('sess-capacidade').value = sess.capacidade;
       document.getElementById('sess-local').value = sess.local;
+      tempSessionOradores = [...(sess.oradores || [])];
     }
   } else {
     document.getElementById('sess-id').value = '';
   }
+  renderSessionOradores();
   document.getElementById('sessionModal').classList.remove('hidden');
 }
 
@@ -940,7 +1158,7 @@ function handleSessionSubmit(e) {
     return;
   }
 
-  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local };
+  const newSess = { id, titulo, desc, inicio, fim, tipo, capacidade, local, oradores: [...tempSessionOradores] };
   const currentSessions = editingEventId ? getEvents().find((ev) => ev.id === editingEventId)?.sessions || [] : tempSessions;
   const conflict = currentSessions.filter((s) => s.id !== id).find((s) => inicio < s.fim && fim > s.inicio);
   if (conflict) {
@@ -1031,6 +1249,10 @@ window.app = {
   visitEvent: (id) => showView('details', { id }),
   editSession: (eventId, sessionId) => openSessionModal(eventId, sessionId),
   submitSessionFeedback: handleSessionFeedbackSubmit,
+  addOrador: addOradorToSession,
+  removeOrador: removeOradorFromSession,
+  openSpeakerModal: openSpeakerModal,
+  openSpeakerProfile: openSpeakerProfile,
   deleteSession: (eventId, sessionId) => {
     if (!confirm('Deseja eliminar esta sessao?')) return;
     if (eventId) {

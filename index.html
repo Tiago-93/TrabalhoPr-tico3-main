@@ -185,7 +185,19 @@
       <div class="event-content-grid">
         <main class="event-main-info">
           <section class="ed-card"><h3>Sobre o Evento</h3><p id="ed-desc"></p></section>
-          <section class="ed-card"><div class="card-header-flex"><h3>Agenda do Evento</h3><button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessao</button></div><div id="ed-sessions-list" class="agenda-timeline"></div></section>
+          <section class="ed-card">
+            <div class="card-header-flex">
+              <h3>Agenda do Evento</h3>
+              <button class="btn-sm btn-primary hidden" id="ed-add-session-inline">+ Sessao</button>
+            </div>
+            <div id="agenda-filter-bar" class="agenda-filter-bar hidden">
+              <select id="af-tipo"><option value="">Todos os tipos</option><option value="presencial">Presencial</option><option value="online">Online</option></select>
+              <select id="af-orador"><option value="">Todos os oradores</option></select>
+              <select id="af-sala"><option value="">Todas as salas</option></select>
+              <button id="btn-export-agenda-pdf" class="btn btn-secondary btn-sm">📄 Exportar PDF</button>
+            </div>
+            <div id="ed-sessions-list" class="agenda-timeline"></div>
+          </section>
           <section class="ed-card hidden" id="registration-confirmation">
             <h3>Inscricao confirmada</h3>
             <p>A sua presenca foi confirmada. Guarde o numero de referencia para check-in.</p>
@@ -199,8 +211,8 @@
                 <p class="stats-subtitle">Dashboard responsivo atualizado em tempo real.</p>
               </div>
               <div class="stats-export-actions">
-                <button class="btn btn-secondary" id="btn-export-stats-pdf">Exportar PDF</button>
-                <button class="btn btn-secondary" id="btn-export-stats-excel">Exportar Excel</button>
+                <button type="button" class="btn btn-secondary" id="btn-export-stats-pdf">Exportar PDF</button>
+                <button type="button" class="btn btn-secondary" id="btn-export-stats-excel">Exportar Excel</button>
               </div>
             </div>
             <div class="stats-filters">
@@ -273,8 +285,17 @@
         <div class="form-row"><div class="field-group"><label>Inicio</label><input type="time" id="sess-inicio" required /></div><div class="field-group"><label>Fim</label><input type="time" id="sess-fim" required /></div></div>
         <div class="form-row"><div class="field-group"><label>Tipo</label><select id="sess-tipo"><option value="presencial">Presencial</option><option value="online">Online</option></select></div><div class="field-group"><label>Capacidade</label><input type="number" id="sess-capacidade" min="1" required /></div></div>
         <div class="field-group"><label id="lbl-sess-local">Sala / Local</label><input id="sess-local" required /></div>
+        <div class="field-group">
+          <label>Oradores</label>
+          <div id="sess-oradores-chips" class="speaker-chips"></div>
+          <div class="speaker-search-row">
+            <input id="sess-orador-search" placeholder="Pesquisar orador pelo nome..." autocomplete="off" />
+            <button type="button" id="btn-novo-orador" class="btn btn-secondary btn-sm">+ Novo</button>
+          </div>
+          <div id="sess-orador-results" class="speaker-results hidden"></div>
+        </div>
         <div id="sess-error" class="error-msg"></div>
-        <button class="btn btn-primary btn-full">Guardar Sessao</button>
+        <button type="submit" class="btn btn-primary btn-full">Guardar Sessao</button>
       </form>
     </div>
   </div>
@@ -284,6 +305,29 @@
       <button class="modal-close" id="closeModal">x</button>
       <div id="recover-form-div"><div class="modal-header"><h3>Recuperar Password</h3></div><div class="field-group" id="grp-recover-email"><label>Email</label><input type="email" id="recoverEmail" /><span class="error-msg" id="err-recover-email"></span></div><button class="btn btn-primary btn-full" id="sendRecoverBtn">Enviar Link</button></div>
       <div id="recover-success-div" class="hidden"><div class="success-icon">✔</div><h3>Email enviado!</h3><p>Enviamos as instrucoes para <strong id="recoverSentTo"></strong></p><button class="btn btn-primary btn-full" id="closeRecoverSuccess">Voltar ao Login</button></div>
+    </div>
+  </div>
+
+  <div id="speakerModal" class="modal-overlay hidden">
+    <div class="modal">
+      <button type="button" class="modal-close" id="closeSpeakerModal">×</button>
+      <div class="modal-header"><h3 id="speakerModalTitle">Criar Orador</h3></div>
+      <form id="speakerForm">
+        <input type="hidden" id="spk-id" />
+        <div class="field-group"><label>Nome <span class="required">*</span></label><input id="spk-nome" required /></div>
+        <div class="field-group"><label>Biografia</label><textarea id="spk-bio" rows="3" placeholder="Breve bio do orador"></textarea></div>
+        <div class="field-group"><label>Foto (URL)</label><input type="url" id="spk-foto" placeholder="https://..." /></div>
+        <div class="field-group"><label>Contacto</label><input id="spk-contacto" placeholder="email ou telefone" /></div>
+        <div id="spk-error" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary btn-full">Guardar Orador</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="speakerProfileModal" class="modal-overlay hidden">
+    <div class="modal">
+      <button type="button" class="modal-close" id="closeSpeakerProfileModal">×</button>
+      <div id="speaker-profile-content"></div>
     </div>
   </div>
 
