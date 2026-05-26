@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check app.js)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\admin\\\\Desktop\\\\BrightStart-1-Semestre\\\\GPS\\\\Sprint3\\\\TrabalhoPr-tico2-main\\\\TrabalhoPr-tico3-main\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(tree \"c:\\\\Users\\\\admin\\\\Desktop\\\\BrightStart-1-Semestre\\\\GPS\\\\Sprint3\\\\TrabalhoPr-tico2-main\\\\TrabalhoPr-tico3-main\" -L 3)"
+    ]
+  }
+}

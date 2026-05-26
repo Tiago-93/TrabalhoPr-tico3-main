@@ -14,7 +14,8 @@ const views = {
   createEvent: document.getElementById('view-create-event'),
   listEvents: document.getElementById('view-list-events'),
   details: document.getElementById('view-event-details'),
-  profile: document.getElementById('view-profile')
+  profile: document.getElementById('view-profile'),
+  adminSpeakers: document.getElementById('view-admin-speakers')
 };
 
 let tempSessions = [];
@@ -37,15 +38,32 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 document.addEventListener('DOMContentLoaded', () => {
   seedEvents();
   seedSpeakers();
+  seedAdmin();
   initRouting();
   initValidation();
   initAuth();
   initEventLogic();
+  initImageUpload();
   initSessionModal();
   initSpeakerModal();
+  initAdminSpeakersView();
+  initLocationMaps();
   initRecovery();
   checkSession();
 });
+
+function seedAdmin() {
+  const users = getUsers();
+  if (users.some((u) => u.email === 'admin@eventhub.com')) return;
+  saveUsers([...users, {
+    id: 'admin',
+    nome: 'Admin EventHub',
+    email: 'admin@eventhub.com',
+    pw: hashPassword('Admin1234'),
+    isAdmin: true,
+    created: new Date().toISOString()
+  }]);
+}
 
 function seedSpeakers() {
   if (getSpeakers().length > 0) return;
@@ -106,10 +124,19 @@ function showView(viewId, params = {}) {
   document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.target === viewId));
   window.scrollTo(0, 0);
 
+  updateAdminNav();
   if (viewId === 'dashboard') populateDashboard(getSession());
   if (viewId === 'listEvents') populateEventsGrid();
   if (viewId === 'details') renderEventDetails(params.id);
   if (viewId === 'profile') renderRegistrationHistory('profile-registration-history');
+  if (viewId === 'adminSpeakers') renderAdminSpeakers();
+}
+
+function updateAdminNav() {
+  const session = getSession();
+  document.querySelectorAll('.admin-only-nav').forEach((el) => {
+    el.classList.toggle('hidden', !session?.isAdmin);
+  });
 }
 
 function initRouting() {
@@ -132,6 +159,7 @@ function initRouting() {
   document.getElementById('ce-go-dash')?.addEventListener('click', () => {
     document.getElementById('createEventForm').classList.remove('hidden');
     document.getElementById('ce-success').classList.add('hidden');
+    resetImageUpload();
     tempSessions = [];
     renderTempSessions();
     showView('dashboard');
@@ -239,7 +267,7 @@ function initAuth() {
       return;
     }
 
-    const session = { userId: user.id, nome: user.nome, email: user.email, loginAt: new Date().toISOString(), persistent: document.getElementById('rememberMe').checked };
+    const session = { userId: user.id, nome: user.nome, email: user.email, isAdmin: user.isAdmin || false, loginAt: new Date().toISOString(), persistent: document.getElementById('rememberMe').checked };
     if (session.persistent) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     else sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     e.target.reset();
@@ -267,8 +295,53 @@ function populateDashboard(s) {
   document.getElementById('sb-name').textContent = s.nome;
   document.getElementById('sb-email').textContent = s.email;
   document.getElementById('sb-avatar').textContent = initials;
+  updateAdminNav();
   updateStats();
   renderRegistrationHistory('dashboard-registration-history');
+}
+
+function renderAdminSpeakers() {
+  const session = getSession();
+  if (!session?.isAdmin) { showView('dashboard'); return; }
+
+  const el = (id) => document.getElementById(id);
+  if (el('as-name')) {
+    const initials = session.nome.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+    el('as-name').textContent = session.nome;
+    el('as-email').textContent = session.email;
+    el('as-avatar').textContent = initials;
+  }
+
+  const speakers = getSpeakers();
+  const list = el('admin-speakers-list');
+  if (!list) return;
+
+  if (speakers.length === 0) {
+    list.innerHTML = '<p class="empty-msg">Nenhum orador registado. Clique em "+ Novo Orador" para criar.</p>';
+    return;
+  }
+
+  list.innerHTML = speakers.map((sp) => `
+    <div class="speaker-admin-card">
+      <div class="speaker-admin-avatar">
+        ${sp.foto ? `<img src="${escapeHtml(sp.foto)}" alt="${escapeHtml(sp.nome)}" />` : `<span>${escapeHtml(sp.nome.split(' ').map((n) => n[0]).slice(0, 2).join(''))}</span>`}
+      </div>
+      <div class="speaker-admin-info">
+        <strong>${escapeHtml(sp.nome)}</strong>
+        <span>${sp.contacto ? escapeHtml(sp.contacto) : 'Sem contacto'}</span>
+        ${sp.bio ? `<p>${escapeHtml(sp.bio)}</p>` : ''}
+      </div>
+      <div class="speaker-admin-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="app.editSpeakerAdmin('${sp.id}')">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="app.deleteSpeakerAdmin('${sp.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function initAdminSpeakersView() {
+  document.getElementById('btn-admin-create-speaker')?.addEventListener('click', () => openSpeakerModal());
+  document.getElementById('btn-admin-logout')?.addEventListener('click', logout);
 }
 
 function updateStats() {
@@ -314,7 +387,7 @@ function initEventLogic() {
       capac,
       estado,
       sessions: tempSessions,
-      imgPreview: null,
+      imgPreview: selectedImageDataUrl || null,
       url: `https://eventhub.com/e/${eventId}`,
       organizer: session.userId,
       orgName: session.nome,
@@ -326,6 +399,7 @@ function initEventLogic() {
     document.getElementById('createEventForm').classList.add('hidden');
     document.getElementById('ce-success').classList.remove('hidden');
     e.target.reset();
+    resetImageUpload();
     tempSessions = [];
     renderTempSessions();
   });
@@ -404,6 +478,13 @@ function renderEventDetails(id) {
   document.getElementById('ed-org-avatar').textContent = orgName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   document.getElementById('ed-add-session-inline').classList.toggle('hidden', ev.organizer !== getSession()?.userId);
   document.getElementById('ed-add-session-inline').onclick = () => openSessionModal(ev.id);
+
+  const edMap = document.getElementById('ed-local-map');
+  if (edMap) {
+    const isPhysical = ev.formato !== 'online' && ev.local && ev.local.toLowerCase() !== 'online';
+    if (isPhysical) geocodeAndShowMap('ed-local-map', ev.local);
+    else edMap.classList.add('hidden');
+  }
 
   renderAgenda(ev);
   renderRegistrationState(ev);
@@ -552,22 +633,32 @@ function handleSpeakerSubmit(e) {
   const isEdit = speakers.some((s) => s.id === id);
   const newSpk = { id, nome, bio, foto, contacto };
   saveSpeakers(isEdit ? speakers.map((s) => s.id === id ? newSpk : s) : [...speakers, newSpk]);
-  if (!isEdit) addOradorToSession(id);
+
+  const sessionModalOpen = !document.getElementById('sessionModal').classList.contains('hidden');
+  if (!isEdit && sessionModalOpen) addOradorToSession(id);
 
   document.getElementById('speakerModal').classList.add('hidden');
   renderSessionOradores();
   const searchEl = document.getElementById('sess-orador-search');
   if (searchEl) { searchEl.value = ''; }
   document.getElementById('sess-orador-results')?.classList.add('hidden');
+
+  if (!views.adminSpeakers?.classList.contains('hidden')) renderAdminSpeakers();
 }
 
-function handleOradorSearch(e) {
-  const query = e.target.value.trim().toLowerCase();
+function renderOradorResults(query) {
   const resultsEl = document.getElementById('sess-orador-results');
-  if (!query) { resultsEl.classList.add('hidden'); resultsEl.innerHTML = ''; return; }
-  const results = getSpeakers().filter((sp) => sp.nome.toLowerCase().includes(query) && !tempSessionOradores.includes(sp.id));
-  if (results.length === 0) {
-    resultsEl.innerHTML = `<div class="speaker-no-results">Nenhum orador encontrado. <button type="button" class="btn-link" onclick="app.openSpeakerModal()">Criar novo</button></div>`;
+  if (!resultsEl) return;
+  const allSpeakers = getSpeakers();
+  const available = allSpeakers.filter((sp) => !tempSessionOradores.includes(sp.id));
+  const results = query
+    ? available.filter((sp) => sp.nome.toLowerCase().includes(query))
+    : available;
+
+  if (results.length === 0 && allSpeakers.length === 0) {
+    resultsEl.innerHTML = `<div class="speaker-no-results">Nenhum orador criado ainda. <button type="button" class="btn-link" onclick="app.openSpeakerModal()">Criar orador</button></div>`;
+  } else if (results.length === 0) {
+    resultsEl.innerHTML = `<div class="speaker-no-results">Sem resultados. <button type="button" class="btn-link" onclick="app.openSpeakerModal()">Criar novo orador</button></div>`;
   } else {
     resultsEl.innerHTML = results.map((sp) => `
       <div class="speaker-result-item">
@@ -576,6 +667,17 @@ function handleOradorSearch(e) {
       </div>`).join('');
   }
   resultsEl.classList.remove('hidden');
+}
+
+function handleOradorSearchFocus() {
+  renderOradorResults('');
+}
+
+function handleOradorSearch(e) {
+  const query = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('sess-orador-results');
+  if (!query) { renderOradorResults(''); return; }
+  renderOradorResults(query);
 }
 
 function addOradorToSession(speakerId) {
@@ -1105,7 +1207,15 @@ function initSessionModal() {
   });
   document.getElementById('sessionForm')?.addEventListener('submit', handleSessionSubmit);
   document.getElementById('sess-orador-search')?.addEventListener('input', handleOradorSearch);
+  document.getElementById('sess-orador-search')?.addEventListener('focus', handleOradorSearchFocus);
   document.getElementById('btn-novo-orador')?.addEventListener('click', () => openSpeakerModal());
+  document.addEventListener('click', (e) => {
+    const search = document.getElementById('sess-orador-search');
+    const results = document.getElementById('sess-orador-results');
+    if (search && results && !search.contains(e.target) && !results.contains(e.target)) {
+      results.classList.add('hidden');
+    }
+  });
 }
 
 function openSessionModal(eventId = null, sessionId = null) {
@@ -1235,6 +1345,118 @@ function initRecovery() {
   });
 }
 
+let selectedImageDataUrl = null;
+
+function initImageUpload() {
+  const area = document.getElementById('ce-img-upload-area');
+  const input = document.getElementById('ce-img-upload');
+  const removeBtn = document.getElementById('ce-img-remove');
+  if (!area || !input) return;
+
+  area.addEventListener('click', (e) => {
+    if (e.target === removeBtn || removeBtn?.contains(e.target)) return;
+    input.click();
+  });
+
+  input.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    selectedImageDataUrl = await resizeImage(file, 1200, 0.78);
+    showImagePreview(selectedImageDataUrl);
+  });
+
+  removeBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetImageUpload();
+  });
+}
+
+function resizeImage(file, maxWidth, quality) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(maxWidth / img.width, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function showImagePreview(dataUrl) {
+  const preview = document.getElementById('ce-img-preview');
+  const placeholder = document.getElementById('ce-upload-placeholder');
+  const removeBtn = document.getElementById('ce-img-remove');
+  if (preview) { preview.src = dataUrl; preview.classList.add('has-image'); }
+  if (placeholder) placeholder.classList.add('hidden');
+  if (removeBtn) removeBtn.classList.remove('hidden');
+}
+
+function resetImageUpload() {
+  selectedImageDataUrl = null;
+  const preview = document.getElementById('ce-img-preview');
+  const placeholder = document.getElementById('ce-upload-placeholder');
+  const removeBtn = document.getElementById('ce-img-remove');
+  const input = document.getElementById('ce-img-upload');
+  if (preview) { preview.src = ''; preview.classList.remove('has-image'); }
+  if (placeholder) placeholder.classList.remove('hidden');
+  if (removeBtn) removeBtn.classList.add('hidden');
+  if (input) input.value = '';
+}
+
+const mapInstances = {};
+let locationDebounceTimer = null;
+
+function initLocationMaps() {
+  if (typeof L === 'undefined') return;
+  document.getElementById('ce-local')?.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    clearTimeout(locationDebounceTimer);
+    const mapEl = document.getElementById('ce-local-map');
+    if (!mapEl) return;
+    if (query.length < 3) { mapEl.classList.add('hidden'); return; }
+    locationDebounceTimer = setTimeout(() => geocodeAndShowMap('ce-local-map', query), 800);
+  });
+}
+
+function geocodeAndShowMap(containerId, query) {
+  if (typeof L === 'undefined') return;
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, {
+    headers: { 'Accept-Language': 'pt' }
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data || !data.length) return;
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.classList.remove('hidden');
+
+      if (mapInstances[containerId]) {
+        mapInstances[containerId].map.setView([lat, lon], 14);
+        mapInstances[containerId].marker.setLatLng([lat, lon]).setPopupContent(query).openPopup();
+        setTimeout(() => mapInstances[containerId].map.invalidateSize(), 100);
+      } else {
+        const map = L.map(containerId).setView([lat, lon], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        const marker = L.marker([lat, lon]).addTo(map).bindPopup(query).openPopup();
+        mapInstances[containerId] = { map, marker };
+        setTimeout(() => map.invalidateSize(), 100);
+      }
+    })
+    .catch(() => {});
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
     '&': '&amp;',
@@ -1253,6 +1475,17 @@ window.app = {
   removeOrador: removeOradorFromSession,
   openSpeakerModal: openSpeakerModal,
   openSpeakerProfile: openSpeakerProfile,
+  editSpeakerAdmin: (id) => openSpeakerModal(id),
+  deleteSpeakerAdmin: (id) => {
+    if (!confirm('Deseja eliminar este orador? Sera removido de todas as sessoes.')) return;
+    saveSpeakers(getSpeakers().filter((s) => s.id !== id));
+    const events = getEvents();
+    events.forEach((ev) => {
+      if (ev.sessions) ev.sessions.forEach((sess) => { sess.oradores = (sess.oradores || []).filter((sid) => sid !== id); });
+    });
+    saveEvents(events);
+    renderAdminSpeakers();
+  },
   deleteSession: (eventId, sessionId) => {
     if (!confirm('Deseja eliminar esta sessao?')) return;
     if (eventId) {

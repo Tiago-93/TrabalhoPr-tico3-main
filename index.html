@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <div class="bg-blob blob-1"></div>
@@ -98,6 +99,10 @@
             </div>
             <button type="submit" class="btn btn-primary btn-full" id="login-btn">Entrar</button>
           </form>
+          <div class="admin-demo-hint">
+            <span>Admin demo:</span>
+            <code>admin@eventhub.com</code> / <code>Admin1234</code>
+          </div>
           <p class="login-link">Nao tem conta? <a href="#" id="goRegister">Registar-se</a></p>
         </div>
       </section>
@@ -110,6 +115,7 @@
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-target="dashboard">📋 Dashboard</a>
         <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
+        <a href="#" class="nav-item admin-only-nav hidden" data-target="adminSpeakers">🎤 Oradores</a>
         <a href="#" class="nav-item" data-target="profile">👤 Perfil</a>
       </nav>
       <div class="sidebar-footer"><div class="user-avatar" id="sb-avatar">--</div><div class="user-info"><strong id="sb-name">--</strong><span id="sb-email">--</span></div></div>
@@ -137,6 +143,7 @@
         <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
         <a href="#" class="nav-item active" data-target="createEvent">➕ Novo Evento</a>
         <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
+        <a href="#" class="nav-item admin-only-nav hidden" data-target="adminSpeakers">🎤 Oradores</a>
       </nav>
     </aside>
     <div class="dash-main">
@@ -147,6 +154,19 @@
           <button class="btn btn-primary" id="ce-go-dash">Voltar ao Dashboard</button>
         </div>
         <form id="createEventForm" class="event-form" novalidate>
+          <div class="field-group">
+            <label>Imagem de Capa</label>
+            <div class="image-upload-area" id="ce-img-upload-area">
+              <input type="file" id="ce-img-upload" accept="image/*" />
+              <div class="upload-placeholder" id="ce-upload-placeholder">
+                <span class="upload-icon">🖼️</span>
+                <p>Clique para adicionar imagem de capa</p>
+                <span>JPG, PNG, WebP recomendado</span>
+              </div>
+              <img id="ce-img-preview" alt="Preview da capa" />
+              <button type="button" id="ce-img-remove" class="btn-img-remove hidden">× Remover imagem</button>
+            </div>
+          </div>
           <div class="form-grid">
             <div>
               <div class="field-group" id="grp-ce-titulo"><label>Titulo <span class="required">*</span></label><input id="ce-titulo" /><span class="error-msg" id="err-ce-titulo"></span></div>
@@ -154,10 +174,11 @@
               <div class="form-row"><div class="field-group" id="grp-ce-data"><label>Data <span class="required">*</span></label><input type="datetime-local" id="ce-data" /><span class="error-msg" id="err-ce-data"></span></div><div class="field-group" id="grp-ce-capacidade"><label>Capacidade <span class="required">*</span></label><input type="number" id="ce-capacidade" min="1" /><span class="error-msg" id="err-ce-capacidade"></span></div></div>
             </div>
             <div>
-              <div class="field-group" id="grp-ce-local"><label>Localizacao <span class="required">*</span></label><input id="ce-local" /><span class="error-msg" id="err-ce-local"></span></div>
+              <div class="field-group" id="grp-ce-local"><label>Localizacao <span class="required">*</span></label><input id="ce-local" placeholder="Ex: Lisboa, Auditório Central..." /><span class="error-msg" id="err-ce-local"></span></div>
+              <div id="ce-local-map" class="location-map hidden"></div>
               <div class="field-group" id="grp-ce-link"><label>Link</label><input type="url" id="ce-link" /><span class="error-msg" id="err-ce-link"></span></div>
               <div class="field-group"><label>Formato</label><select id="ce-formato"><option value="presencial">Presencial</option><option value="online">Online</option><option value="hibrido">Hibrido</option></select></div>
-              <div class="field-group"><label>Estado</label><div class="radio-group"><label><input type="radio" name="ce-estado" value="rascunho" checked /> Rascunho</label><label><input type="radio" name="ce-estado" value="publicado" /> Publicado</label></div></div>
+              <div class="field-group"><label>Estado</label><div class="radio-group"><label class="radio-item"><input type="radio" name="ce-estado" value="rascunho" checked /><span class="radio-custom"></span>Rascunho</label><label class="radio-item"><input type="radio" name="ce-estado" value="publicado" /><span class="radio-custom"></span>Publicado</label></div></div>
             </div>
           </div>
           <div class="form-actions"><button type="button" class="btn btn-secondary" id="ce-add-session-btn">+ Adicionar Sessao</button><button class="btn btn-primary" id="ce-submit-btn">Criar Evento</button></div>
@@ -170,7 +191,7 @@
   <div id="view-list-events" class="view view-dash hidden">
     <aside class="sidebar">
       <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item" data-target="profile">👤 Perfil</a></nav>
+      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item active" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item admin-only-nav hidden" data-target="adminSpeakers">🎤 Oradores</a><a href="#" class="nav-item" data-target="profile">👤 Perfil</a></nav>
     </aside>
     <div class="dash-main">
       <header class="dash-topbar"><div><h1 class="dash-title">Todos os Eventos</h1><p class="dash-subtitle">Escolha um evento para ver detalhes e inscrever-se</p></div><button class="btn btn-primary" id="btn-nav-create-le">+ Novo Evento</button></header>
@@ -184,7 +205,7 @@
       <div class="event-hero" id="ed-hero"><div class="event-hero-overlay"><div class="event-hero-content"><span class="badge badge--active" id="ed-status">Publicado</span><h1 id="ed-titulo"></h1><div class="event-quick-info"><span id="ed-data"></span><span id="ed-local"></span></div></div></div></div>
       <div class="event-content-grid">
         <main class="event-main-info">
-          <section class="ed-card"><h3>Sobre o Evento</h3><p id="ed-desc"></p></section>
+          <section class="ed-card"><h3>Sobre o Evento</h3><p id="ed-desc"></p><div id="ed-local-map" class="location-map hidden"></div></section>
           <section class="ed-card">
             <div class="card-header-flex">
               <h3>Agenda do Evento</h3>
@@ -266,7 +287,7 @@
   <div id="view-profile" class="view view-dash hidden">
     <aside class="sidebar">
       <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
-      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item active" data-target="profile">👤 Perfil</a></nav>
+      <nav class="sidebar-nav"><a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a><a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a><a href="#" class="nav-item admin-only-nav hidden" data-target="adminSpeakers">🎤 Oradores</a><a href="#" class="nav-item active" data-target="profile">👤 Perfil</a></nav>
     </aside>
     <div class="dash-main">
       <header class="dash-topbar"><div><h1 class="dash-title">Perfil</h1><p class="dash-subtitle">Historico de inscricoes no perfil do utilizador</p></div></header>
@@ -331,6 +352,29 @@
     </div>
   </div>
 
+  <div id="view-admin-speakers" class="view view-dash hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="brand-icon">&#128197;</div><span class="brand-name">EventHub</span></div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item" data-target="dashboard">📋 Dashboard</a>
+        <a href="#" class="nav-item" data-target="listEvents">📅 Eventos</a>
+        <a href="#" class="nav-item active admin-only-nav" data-target="adminSpeakers">🎤 Oradores</a>
+        <a href="#" class="nav-item" data-target="profile">👤 Perfil</a>
+      </nav>
+      <div class="sidebar-footer"><div class="user-avatar" id="as-avatar">--</div><div class="user-info"><strong id="as-name">--</strong><span id="as-email">--</span></div></div>
+    </aside>
+    <div class="dash-main">
+      <header class="dash-topbar">
+        <div><h1 class="dash-title">Gestao de Oradores</h1><p class="dash-subtitle">Administre os oradores da plataforma</p></div>
+        <div class="topbar-actions"><button type="button" class="btn btn-primary" id="btn-admin-create-speaker">+ Novo Orador</button><button type="button" class="btn-logout-top" id="btn-admin-logout">Terminar sessao</button></div>
+      </header>
+      <section class="dash-card">
+        <div id="admin-speakers-list" class="speakers-admin-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
